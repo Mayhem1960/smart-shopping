@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -28,6 +29,13 @@ export default function ScanScreen() {
   const [scanning, setScanning] = useState(true);
   const [looking, setLooking] = useState(false);
   const [webBarcode, setWebBarcode] = useState('');
+
+  // Auto-request permission as soon as we know the status
+  useEffect(() => {
+    if (permission !== null && !permission.granted && permission.canAskAgain) {
+      requestPermission();
+    }
+  }, [permission?.granted, permission?.canAskAgain]);
 
   const [addModalVisible, setAddModalVisible] = useState(false);
   const [consumeModalVisible, setConsumeModalVisible] = useState(false);
@@ -159,12 +167,19 @@ export default function ScanScreen() {
         <Text style={[styles.permSub, { color: colors.mutedForeground }]}>
           Scanning barcodes requires camera permission.
         </Text>
-        {permission.canAskAgain && (
+        {permission.canAskAgain ? (
           <Pressable
             onPress={requestPermission}
             style={[styles.permBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
           >
             <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 16 }}>Allow Camera</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={() => Linking.openSettings()}
+            style={[styles.permBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
+          >
+            <Text style={{ color: colors.primaryForeground, fontWeight: '600', fontSize: 16 }}>Open Settings</Text>
           </Pressable>
         )}
       </View>
