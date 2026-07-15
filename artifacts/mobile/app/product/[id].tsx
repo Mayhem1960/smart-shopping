@@ -1,0 +1,276 @@
+import React, { useState } from 'react';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useColors } from '@/hooks/useColors';
+import { useShopping } from '@/context/ShoppingContext';
+import StockBar from '@/components/StockBar';
+import ConsumeModal from '@/components/ConsumeModal';
+import { Feather } from '@expo/vector-icons';
+import { formatDaysLeft, getAvgDailyConsumption, getDaysUntilEmpty, getNextBuyDate, getStockStatus } from '@/lib/predictions';
+import { Platform } from 'react-native';
+
+const STATUS_LABELS: Record<string, string> = {
+  ok: 'In stock',
+  low: 'Running low',
+  critical: 'Critical',
+  out: 'Out of stock',
+};
+
+export default function ProductDetailScreen() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const { getProduct, updateProduct, deleteProduct, logConsumption, logRestock } = useShopping();
+
+  const [consumeVisible, setConsumeVisible] = useState(false);
+  const [editThreshold, setEditThreshold] = useState(false);
+  const [thresholdVal, setThresholdVal] = useState('');
+
+  const product = getProduct(id);
+
+  if (!product) {
+    return (
+      <View style={[styles.center, { backgroundColor: colors.background }]}>
+        <Text style={{ color: colors.mutedForeground }}>Product not found</Text>
+      </View>
+    );
+  }
+
+  const status = getStockStatus(product);
+  const days = getDaysUntilEmpty(product);
+  const avg = getAvgDailyConsumption(product);
+  const nextBuy = getNextBuyDate(product);
+
+  const statusColor =
+    status === 'ok' ? colors.ok : status === 'low' ? colors.warning : status === 'critical' ? colors.critical : colors.out;
+
+  const handleDelete = () => {
+    Alert.alert('Delete Product', `Remove "${product.name}" from your pantry?`, [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          deleteProduct(product.id);
+          router.back();
+        },
+      },
+    ]);
+  };
+
+  const handleSaveThreshold = () => {
+    const val = parseFloat(thresholdVal);
+    if (val > 0) updateProduct(product.id, { minThreshold: val });
+    setEditThreshold(false);
+  };
+
+  const isWeb = Platform.OS === 'web';
+  const topPad = isWeb ? insets.top + 67 : 0;
+
+  const recentEvents = [...product.usageHistory].reverse().slice(0, 10);
+
+  return (
+    <ScrollView
+      style={[styles.root, { backgroundColor: colors.background }]}
+      contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingTop: topPad }}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Hero */}
+      <View style={[styles.hero, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
+        <View style={styles.heroTop}>
+          <View style={[styles.heroIcon, { backgroundColor: colors.muted }]}>
+            <Feather name="package" size={32} color={colors.mutedForeground} />
+          </View>
+          <Pressable onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
+            <Feather name="trash-2" size={20} color={colors.destructive} />
+          </Pressable>
+        </View>
+        <Text style={[styles.heroName, { color: colors.foreground }]}>{product.name}</Text>
+        {product.brand && (
+          <Text style={[styles.heroBrand, { color: colors.mutedForeground }]}>{product.brand}</Text>
+        )}
+        <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+          <Text style={[styles.statusTxt, { color: statusColor }]}>{STATUS_LABELS[status]}</Text>
+        </View>
+      </View>
+
+      {/* Stock card */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
+        <View style={styles.cardRow}>
+          <View>
+            <Text style={[styles.cardLabel, { color: colors.mutedForeground }]}>Current Stock</Text>
+            <Text style={[styles.bigNumber, { color: colors.foreground }]}>
+              {product.currentQuantity}
+              <Text style={[styles.bigUnit, { color: colors.mutedForeground }]}> {product.unit}</Text>
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => setConsumeVisible(true)}
+            style={[styles.logBtn, { backgroundColor: colors.primary, borderRadius: colors.radius - 2 }]}
+          >
+            <Feather name="plus-minus" size={16} color={colors.primaryForeground} />
+            <Text style={[styles.logBtnTxt, { color: colors.primaryForeground }]}>Log</Text>
+          </TouchableOpacity>
+        </View>
+        <StockBar product={product} status={status} height={8} />
+        <View style={styles.thresholdRow}>
+          <Text style={[styles.thresholdLabel, { color: colors.mutedForeground }]}>
+            Restock threshold: {product.minThreshold} {product.unit}
+          </Text>
+          <Pressable onPress={() => { setThresholdVal(String(product.minThreshold)); setEditThreshold(true); }} hitSlop={8}>
+            <Feather name="edit-2" size={13} color={colors.primary} />
+          </Pressable>
+        </View>
+        {editThreshold && (
+          <View style={styles.editThreshRow}>
+            <TextInput
+              style={[styles.editThreshInput, { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted, borderRadius: colors.radius - 4 }]}
+              value={thresholdVal}
+              onChangeText={setThresholdVal}
+              keyboardType="decimal-pad"
+              autoFocus
+            />
+            <TouchableOpacity onPress={handleSaveThreshold} style={[styles.saveThreshBtn, { backgroundColor: colors.primary, borderRadius: colors.radius - 4 }]}>
+              <Text style={{ color: '#fff', fontWeight: '600', fontFamily: 'Inter_600SemiBold' }}>Save</Text>
+            </TouchableOpacity>
+            <Pressable onPress={() => setEditThreshold(false)} hitSlop={8}>
+              <Feather name="x" size={18} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+        )}
+      </View>
+
+      {/* Predictions */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
+        <Text style={[styles.cardSectionTitle, { color: colors.foreground }]}>Predictions</Text>
+        <View style={styles.predGrid}>
+          <PredItem label="Days left" value={formatDaysLeft(days)} color={days !== null && days < 5 ? colors.critical : colors.foreground} colors={colors} />
+          <PredItem label="Avg per day" value={avg ? `${avg.toFixed(2)} ${product.unit}` : '—'} colors={colors} />
+          <PredItem
+            label="Buy before"
+            value={nextBuy ? nextBuy.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}
+            colors={colors}
+          />
+          <PredItem label="Usage events" value={String(product.usageHistory.filter((e) => e.type === 'consume').length)} colors={colors} />
+        </View>
+        {avg === null && (
+          <Text style={[styles.predNote, { color: colors.mutedForeground }]}>
+            Log at least one usage event to see consumption predictions.
+          </Text>
+        )}
+      </View>
+
+      {/* Barcode */}
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
+        <View style={styles.barcodeRow}>
+          <Feather name="hash" size={14} color={colors.mutedForeground} />
+          <Text style={[styles.barcodeVal, { color: colors.mutedForeground }]}>{product.barcode || 'No barcode'}</Text>
+          {product.category && (
+            <View style={[styles.catBadge, { backgroundColor: colors.secondary }]}>
+              <Text style={[styles.catTxt, { color: colors.secondaryForeground }]}>{product.category}</Text>
+            </View>
+          )}
+        </View>
+      </View>
+
+      {/* History */}
+      {recentEvents.length > 0 && (
+        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
+          <Text style={[styles.cardSectionTitle, { color: colors.foreground }]}>Recent History</Text>
+          {recentEvents.map((e) => (
+            <View key={e.id} style={[styles.eventRow, { borderBottomColor: colors.border }]}>
+              <View style={[styles.eventIcon, { backgroundColor: e.type === 'consume' ? colors.critical + '20' : colors.ok + '20' }]}>
+                <Feather name={e.type === 'consume' ? 'trending-down' : 'trending-up'} size={14} color={e.type === 'consume' ? colors.critical : colors.ok} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.eventLabel, { color: colors.foreground }]}>
+                  {e.type === 'consume' ? 'Used' : 'Restocked'} {e.quantity} {product.unit}
+                </Text>
+                <Text style={[styles.eventDate, { color: colors.mutedForeground }]}>
+                  {new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
+
+      <ConsumeModal
+        visible={consumeVisible}
+        product={product}
+        onConsume={(id, qty) => { logConsumption(id, qty); setConsumeVisible(false); }}
+        onRestock={(id, qty) => { logRestock(id, qty); setConsumeVisible(false); }}
+        onCancel={() => setConsumeVisible(false)}
+      />
+    </ScrollView>
+  );
+}
+
+function PredItem({ label, value, color, colors }: { label: string; value: string; color?: string; colors: ReturnType<typeof import('@/hooks/useColors').useColors> }) {
+  return (
+    <View style={styles.predItem}>
+      <Text style={[styles.predLabel, { color: colors.mutedForeground }]}>{label}</Text>
+      <Text style={[styles.predValue, { color: color ?? colors.foreground }]}>{value}</Text>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  hero: {
+    padding: 24,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    alignItems: 'center',
+    gap: 6,
+  },
+  heroTop: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  heroIcon: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  deleteBtn: { padding: 8 },
+  heroName: { fontSize: 22, fontWeight: '700', fontFamily: 'Inter_700Bold', textAlign: 'center' },
+  heroBrand: { fontSize: 14, fontFamily: 'Inter_400Regular' },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, marginTop: 4 },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  statusTxt: { fontSize: 13, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
+  card: {
+    marginHorizontal: 16,
+    marginTop: 16,
+    padding: 16,
+    borderWidth: 1,
+    gap: 12,
+  },
+  cardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  cardLabel: { fontSize: 12, fontFamily: 'Inter_400Regular', marginBottom: 2 },
+  bigNumber: { fontSize: 36, fontWeight: '700', fontFamily: 'Inter_700Bold' },
+  bigUnit: { fontSize: 18, fontWeight: '400' },
+  logBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10 },
+  logBtnTxt: { fontSize: 15, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
+  thresholdRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  thresholdLabel: { fontSize: 12, fontFamily: 'Inter_400Regular', flex: 1 },
+  editThreshRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  editThreshInput: { height: 38, borderWidth: 1, paddingHorizontal: 10, fontSize: 15, width: 80, fontFamily: 'Inter_400Regular' },
+  saveThreshBtn: { paddingHorizontal: 14, paddingVertical: 8 },
+  cardSectionTitle: { fontSize: 15, fontWeight: '700', fontFamily: 'Inter_700Bold' },
+  predGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  predItem: { width: '45%', gap: 3 },
+  predLabel: { fontSize: 11, fontFamily: 'Inter_400Regular', textTransform: 'uppercase', letterSpacing: 0.4 },
+  predValue: { fontSize: 16, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
+  predNote: { fontSize: 12, fontFamily: 'Inter_400Regular', fontStyle: 'italic' },
+  barcodeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  barcodeVal: { flex: 1, fontSize: 13, fontFamily: 'Inter_400Regular' },
+  catBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  catTxt: { fontSize: 11, fontWeight: '500', fontFamily: 'Inter_500Medium' },
+  eventRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  eventIcon: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  eventLabel: { fontSize: 14, fontFamily: 'Inter_500Medium' },
+  eventDate: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+});
