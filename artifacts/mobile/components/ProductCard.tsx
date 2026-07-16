@@ -1,10 +1,10 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { getStockStatus, getDaysUntilEmpty, formatDaysLeft } from '@/lib/predictions';
 import { Product } from '@/lib/storage';
 import StockBar from './StockBar';
-import { Feather } from '@expo/vector-icons';
+import { Package } from 'lucide-react-native';
 
 interface Props {
   product: Product;
@@ -47,7 +47,15 @@ export default function ProductCard({ product, onPress }: Props) {
     >
       <View style={styles.row}>
         <View style={[styles.iconBox, { backgroundColor: colors.muted }]}>
-          <Feather name="package" size={20} color={colors.mutedForeground} />
+          {product.imageUri ? (
+            <Image
+              source={{ uri: product.imageUri }}
+              style={styles.productImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Package size={20} color={colors.mutedForeground} />
+          )}
         </View>
         <View style={styles.info}>
           <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
@@ -101,11 +109,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   iconBox: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  productImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
   },
   info: {
     flex: 1,
