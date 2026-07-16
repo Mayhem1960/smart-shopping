@@ -17,7 +17,7 @@ import { lookupBarcode } from '@/lib/productLookup';
 import AddProductModal, { ProductFormData } from '@/components/AddProductModal';
 import ConsumeModal from '@/components/ConsumeModal';
 import { Product } from '@/lib/storage';
-import { Feather } from '@expo/vector-icons';
+import { CameraOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 export default function ScanScreen() {
@@ -108,7 +108,7 @@ export default function ScanScreen() {
     return (
       <View style={[styles.webContainer, { backgroundColor: colors.background, paddingTop: insets.top + 67 }]}>
         <View style={[styles.webCard, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
-          <Feather name="camera-off" size={36} color={colors.mutedForeground} />
+          <CameraOff size={36} color={colors.mutedForeground} />
           <Text style={[styles.webTitle, { color: colors.foreground }]}>Camera unavailable on web</Text>
           <Text style={[styles.webSub, { color: colors.mutedForeground }]}>
             Enter a barcode manually to look up or add a product.
@@ -164,7 +164,7 @@ export default function ScanScreen() {
   if (!permission.granted) {
     return (
       <View style={[styles.center, { backgroundColor: colors.background, gap: 16 }]}>
-        <Feather name="camera-off" size={40} color={colors.mutedForeground} />
+        <CameraOff size={40} color={colors.mutedForeground} />
         <Text style={[styles.permTitle, { color: colors.foreground }]}>Camera access needed</Text>
         <Text style={[styles.permSub, { color: colors.mutedForeground }]}>
           Scanning barcodes requires camera permission.

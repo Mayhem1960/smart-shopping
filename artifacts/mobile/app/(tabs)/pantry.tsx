@@ -7,7 +7,7 @@ import { useShopping } from '@/context/ShoppingContext';
 import ProductCard from '@/components/ProductCard';
 import EmptyState from '@/components/EmptyState';
 import AddProductModal, { ProductFormData } from '@/components/AddProductModal';
-import { Feather } from '@expo/vector-icons';
+import { Search, X, Plus, Package } from 'lucide-react-native';
 import { getStockStatus } from '@/lib/predictions';
 
 type FilterType = 'all' | 'low' | 'ok';
@@ -57,7 +57,7 @@ export default function PantryScreen() {
     <View style={[styles.root, { backgroundColor: colors.background, paddingTop: topPad }]}>
       {/* Search bar */}
       <View style={[styles.searchRow, { backgroundColor: colors.muted, borderRadius: colors.radius, margin: 16 }]}>
-        <Feather name="search" size={16} color={colors.mutedForeground} />
+        <Search size={16} color={colors.mutedForeground} />
         <TextInput
           style={[styles.searchInput, { color: colors.foreground }]}
           placeholder="Search products..."
@@ -68,7 +68,7 @@ export default function PantryScreen() {
         />
         {search.length > 0 && (
           <Pressable onPress={() => setSearch('')} hitSlop={8}>
-            <Feather name="x" size={16} color={colors.mutedForeground} />
+            <X size={16} color={colors.mutedForeground} />
           </Pressable>
         )}
       </View>
@@ -104,7 +104,7 @@ export default function PantryScreen() {
         )}
         ListEmptyComponent={
           <EmptyState
-            icon="package"
+            icon={Package}
             title={search ? 'No results found' : 'Your pantry is empty'}
             subtitle={search ? 'Try a different search term' : 'Scan a barcode or tap + to add your first product'}
           />
@@ -125,7 +125,7 @@ export default function PantryScreen() {
           },
         ]}
       >
-        <Feather name="plus" size={26} color={colors.primaryForeground} />
+        <Plus size={26} color={colors.primaryForeground} />
       </Pressable>
 
       <AddProductModal

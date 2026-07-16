@@ -7,7 +7,7 @@ import { useShopping } from '@/context/ShoppingContext';
 import ProductCard from '@/components/ProductCard';
 import EmptyState from '@/components/EmptyState';
 import { getDaysUntilEmpty, getStockStatus, needsRestock } from '@/lib/predictions';
-import { Feather } from '@expo/vector-icons';
+import { Camera, Package, AlertTriangle, ShoppingCart, ShoppingBag, type LucideIcon } from 'lucide-react-native';
 import { Platform } from 'react-native';
 
 export default function HomeScreen() {
@@ -52,7 +52,7 @@ export default function HomeScreen() {
       {/* Stats row */}
       <View style={styles.statsRow}>
         <StatCard
-          icon="package"
+          icon={Package}
           value={products.length}
           label="Products"
           color={colors.primary}
@@ -60,7 +60,7 @@ export default function HomeScreen() {
           onPress={() => router.push('/(tabs)/pantry')}
         />
         <StatCard
-          icon="alert-triangle"
+          icon={AlertTriangle}
           value={needsRestockItems.length}
           label="Need restock"
           color={colors.warning}
@@ -68,7 +68,7 @@ export default function HomeScreen() {
           onPress={() => router.push('/(tabs)/pantry')}
         />
         <StatCard
-          icon="shopping-cart"
+          icon={ShoppingCart}
           value={totalListCount}
           label="On list"
           color={colors.ok}
@@ -154,7 +154,7 @@ export default function HomeScreen() {
       {products.length === 0 && (
         <View style={{ paddingTop: 24 }}>
           <EmptyState
-            icon="shopping-bag"
+            icon={ShoppingBag}
             title="Welcome to Smart Shopping"
             subtitle="Scan barcodes to add products, track your consumption, and get automatic shopping suggestions."
           />
@@ -162,7 +162,7 @@ export default function HomeScreen() {
             onPress={() => router.push('/(tabs)/scan')}
             style={[styles.scanBtn, { backgroundColor: colors.primary, borderRadius: colors.radius }]}
           >
-            <Feather name="camera" size={20} color={colors.primaryForeground} />
+            <Camera size={20} color={colors.primaryForeground} />
             <Text style={[styles.scanBtnTxt, { color: colors.primaryForeground }]}>Scan your first product</Text>
           </Pressable>
         </View>
@@ -179,7 +179,7 @@ function StatCard({
   bg,
   onPress,
 }: {
-  icon: keyof typeof Feather.glyphMap;
+  icon: LucideIcon;
   value: number;
   label: string;
   color: string;
@@ -187,6 +187,7 @@ function StatCard({
   onPress: () => void;
 }) {
   const colors = useColors();
+  const Icon = icon;
   return (
     <Pressable
       onPress={onPress}
@@ -201,7 +202,7 @@ function StatCard({
       ]}
     >
       <View style={[styles.statIcon, { backgroundColor: bg }]}>
-        <Feather name={icon} size={18} color={color} />
+        <Icon size={18} color={color} />
       </View>
       <Text style={[styles.statValue, { color: colors.foreground }]}>{value}</Text>
       <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>{label}</Text>

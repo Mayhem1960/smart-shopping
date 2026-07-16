@@ -1,9 +1,9 @@
 import React from 'react';
 import { Platform, StyleSheet, useColorScheme, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
-import { Feather } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { isLiquidGlassAvailable } from 'expo-glass-effect';
+import { Home, Camera, Grid2X2, ShoppingCart } from 'lucide-react-native';
 import { Tabs } from 'expo-router';
 import { Icon, Label, NativeTabs } from 'expo-router/unstable-native-tabs';
 import { SymbolView } from 'expo-symbols';
@@ -85,7 +85,7 @@ function ClassicTabLayout() {
             isIOS ? (
               <SymbolView name="house" tintColor={color} size={24} />
             ) : (
-              <Feather name="home" size={22} color={color} />
+              <Home size={22} color={color} />
             ),
         }}
       />
@@ -98,7 +98,7 @@ function ClassicTabLayout() {
             isIOS ? (
               <SymbolView name="barcode.viewfinder" tintColor={color} size={24} />
             ) : (
-              <Feather name="camera" size={22} color={color} />
+              <Camera size={22} color={color} />
             ),
         }}
       />
@@ -110,7 +110,7 @@ function ClassicTabLayout() {
             isIOS ? (
               <SymbolView name="square.grid.2x2" tintColor={color} size={24} />
             ) : (
-              <Feather name="grid" size={22} color={color} />
+              <Grid2X2 size={22} color={color} />
             ),
         }}
       />
@@ -122,7 +122,7 @@ function ClassicTabLayout() {
             isIOS ? (
               <SymbolView name="list.bullet.clipboard" tintColor={color} size={24} />
             ) : (
-              <Feather name="shopping-cart" size={22} color={color} />
+              <ShoppingCart size={22} color={color} />
             ),
         }}
       />

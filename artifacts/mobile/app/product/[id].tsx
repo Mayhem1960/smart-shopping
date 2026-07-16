@@ -19,7 +19,7 @@ import { useColors } from '@/hooks/useColors';
 import { useShopping } from '@/context/ShoppingContext';
 import StockBar from '@/components/StockBar';
 import ConsumeModal from '@/components/ConsumeModal';
-import { Feather } from '@expo/vector-icons';
+import { Package, Camera, Trash2, Activity, Pencil, X, Hash, TrendingDown, TrendingUp } from 'lucide-react-native';
 import { formatDaysLeft, getAvgDailyConsumption, getDaysUntilEmpty, getNextBuyDate, getStockStatus } from '@/lib/predictions';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -177,18 +177,18 @@ export default function ProductDetailScreen() {
                   resizeMode="cover"
                 />
               ) : (
-                <Feather name="package" size={32} color={colors.mutedForeground} />
+                <Package size={32} color={colors.mutedForeground} />
               )}
             </View>
             {/* Edit badge */}
             <View style={[styles.heroImageBadge, { backgroundColor: colors.primary }]}>
-              <Feather name="camera" size={11} color="#fff" />
+              <Camera size={11} color="#fff" />
             </View>
           </TouchableOpacity>
 
           {/* Delete button top-right */}
           <Pressable onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
-            <Feather name="trash-2" size={20} color={colors.destructive} />
+            <Trash2 size={20} color={colors.destructive} />
           </Pressable>
         </View>
 
@@ -216,7 +216,7 @@ export default function ProductDetailScreen() {
             onPress={() => setConsumeVisible(true)}
             style={[styles.logBtn, { backgroundColor: colors.primary, borderRadius: colors.radius - 2 }]}
           >
-            <Feather name="activity" size={16} color={colors.primaryForeground} />
+            <Activity size={16} color={colors.primaryForeground} />
             <Text style={[styles.logBtnTxt, { color: colors.primaryForeground }]}>Log</Text>
           </TouchableOpacity>
         </View>
@@ -226,7 +226,7 @@ export default function ProductDetailScreen() {
             Restock threshold: {product.minThreshold} {product.unit}
           </Text>
           <Pressable onPress={() => { setThresholdVal(String(product.minThreshold)); setEditThreshold(true); }} hitSlop={8}>
-            <Feather name="edit-2" size={13} color={colors.primary} />
+            <Pencil size={13} color={colors.primary} />
           </Pressable>
         </View>
         {editThreshold && (
@@ -242,7 +242,7 @@ export default function ProductDetailScreen() {
               <Text style={{ color: '#fff', fontWeight: '600', fontFamily: 'Inter_600SemiBold' }}>Save</Text>
             </TouchableOpacity>
             <Pressable onPress={() => setEditThreshold(false)} hitSlop={8}>
-              <Feather name="x" size={18} color={colors.mutedForeground} />
+              <X size={18} color={colors.mutedForeground} />
             </Pressable>
           </View>
         )}
@@ -271,7 +271,7 @@ export default function ProductDetailScreen() {
       {/* Barcode */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
         <View style={styles.barcodeRow}>
-          <Feather name="hash" size={14} color={colors.mutedForeground} />
+          <Hash size={14} color={colors.mutedForeground} />
           <Text style={[styles.barcodeVal, { color: colors.mutedForeground }]}>{product.barcode || 'No barcode'}</Text>
           {product.category && (
             <View style={[styles.catBadge, { backgroundColor: colors.secondary }]}>
@@ -288,7 +288,7 @@ export default function ProductDetailScreen() {
           {recentEvents.map((e) => (
             <View key={e.id} style={[styles.eventRow, { borderBottomColor: colors.border }]}>
               <View style={[styles.eventIcon, { backgroundColor: e.type === 'consume' ? colors.critical + '20' : colors.ok + '20' }]}>
-                <Feather name={e.type === 'consume' ? 'trending-down' : 'trending-up'} size={14} color={e.type === 'consume' ? colors.critical : colors.ok} />
+                {e.type === 'consume' ? <TrendingDown size={14} color={colors.critical} /> : <TrendingUp size={14} color={colors.ok} />}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.eventLabel, { color: colors.foreground }]}>

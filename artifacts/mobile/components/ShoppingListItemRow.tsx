@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { ShoppingItem } from '@/lib/storage';
-import { Feather } from '@expo/vector-icons';
+import { Check, Trash2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 interface Props {
@@ -41,7 +41,7 @@ export default function ShoppingListItemRow({ item, onToggle, onDelete }: Props)
             },
           ]}
         >
-          {item.checked && <Feather name="check" size={12} color={colors.primaryForeground} />}
+          {item.checked && <Check size={12} color={colors.primaryForeground} />}
         </View>
       </Pressable>
 
@@ -67,7 +67,7 @@ export default function ShoppingListItemRow({ item, onToggle, onDelete }: Props)
       </Pressable>
 
       <Pressable onPress={onDelete} hitSlop={8} style={styles.deleteBtn}>
-        <Feather name="trash-2" size={16} color={colors.mutedForeground} />
+        <Trash2 size={16} color={colors.mutedForeground} />
       </Pressable>
     </View>
   );

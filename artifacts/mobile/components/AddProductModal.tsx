@@ -17,7 +17,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { useColors } from '@/hooks/useColors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Feather } from '@expo/vector-icons';
+import { Camera, Pencil } from 'lucide-react-native';
 
 export interface ProductFormData {
   barcode: string;
@@ -187,10 +187,10 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
                     onError={() => setImageUri(undefined)}
                   />
                 ) : (
-                  <Feather name="camera" size={28} color={colors.mutedForeground} />
+                  <Camera size={28} color={colors.mutedForeground} />
                 )}
                 <View style={[styles.imageEditBadge, { backgroundColor: colors.primary }]}>
-                  <Feather name="edit-2" size={10} color="#fff" />
+                  <Pencil size={10} color="#fff" />
                 </View>
               </View>
             </TouchableOpacity>

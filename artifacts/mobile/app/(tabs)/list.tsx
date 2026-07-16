@@ -13,7 +13,7 @@ import { useColors } from '@/hooks/useColors';
 import { useShopping } from '@/context/ShoppingContext';
 import ShoppingListItemRow from '@/components/ShoppingListItemRow';
 import EmptyState from '@/components/EmptyState';
-import { Feather } from '@expo/vector-icons';
+import { Plus, X, PlusCircle, ShoppingCart } from 'lucide-react-native';
 import { ShoppingItem } from '@/lib/storage';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
@@ -124,7 +124,7 @@ export default function ListScreen() {
           shoppingList.length === 0 ? (
             <View style={{ paddingTop: 20 }}>
               <EmptyState
-                icon="shopping-cart"
+                icon={ShoppingCart}
                 title="Your shopping list is empty"
                 subtitle="Smart suggestions appear here automatically when products are running low."
               />
@@ -179,10 +179,10 @@ export default function ListScreen() {
                 style={[styles.addConfirm, { backgroundColor: colors.primary, borderRadius: colors.radius - 4, opacity: addName.trim() ? 1 : 0.5 }]}
                 disabled={!addName.trim()}
               >
-                <Feather name="plus" size={20} color={colors.primaryForeground} />
+                <Plus size={20} color={colors.primaryForeground} />
               </TouchableOpacity>
               <Pressable onPress={() => setAddExpanded(false)} hitSlop={8}>
-                <Feather name="x" size={20} color={colors.mutedForeground} />
+                <X size={20} color={colors.mutedForeground} />
               </Pressable>
             </View>
           </View>
@@ -191,7 +191,7 @@ export default function ListScreen() {
             onPress={() => setAddExpanded(true)}
             style={styles.addCollapsed}
           >
-            <Feather name="plus-circle" size={20} color={colors.primary} />
+            <PlusCircle size={20} color={colors.primary} />
             <Text style={[styles.addPlaceholder, { color: colors.mutedForeground }]}>Add item to list...</Text>
           </Pressable>
         )}

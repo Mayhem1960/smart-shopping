@@ -1,21 +1,21 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
-import { Feather } from '@expo/vector-icons';
+import { type LucideIcon } from 'lucide-react-native';
 
 interface Props {
-  icon: keyof typeof Feather.glyphMap;
+  icon: LucideIcon;
   title: string;
   subtitle?: string;
 }
 
-export default function EmptyState({ icon, title, subtitle }: Props) {
+export default function EmptyState({ icon: Icon, title, subtitle }: Props) {
   const colors = useColors();
 
   return (
     <View style={styles.container}>
       <View style={[styles.iconBox, { backgroundColor: colors.muted }]}>
-        <Feather name={icon} size={32} color={colors.mutedForeground} />
+        <Icon size={32} color={colors.mutedForeground} />
       </View>
       <Text style={[styles.title, { color: colors.foreground }]}>{title}</Text>
       {subtitle && <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>}
