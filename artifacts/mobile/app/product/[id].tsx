@@ -1,5 +1,18 @@
 import React, { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  ActionSheetIOS,
+  Alert,
+  Image,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -8,7 +21,6 @@ import StockBar from '@/components/StockBar';
 import ConsumeModal from '@/components/ConsumeModal';
 import { Feather } from '@expo/vector-icons';
 import { formatDaysLeft, getAvgDailyConsumption, getDaysUntilEmpty, getNextBuyDate, getStockStatus } from '@/lib/predictions';
-import { Platform } from 'react-native';
 
 const STATUS_LABELS: Record<string, string> = {
   ok: 'In stock',
@@ -16,6 +28,36 @@ const STATUS_LABELS: Record<string, string> = {
   critical: 'Critical',
   out: 'Out of stock',
 };
+
+async function pickProductImage(source: 'camera' | 'library'): Promise<string | null> {
+  if (source === 'camera') {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Camera access is required to take a photo.');
+      return null;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    return result.canceled ? null : result.assets[0].uri;
+  } else {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Photo library access is required to choose a photo.');
+      return null;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    return result.canceled ? null : result.assets[0].uri;
+  }
+}
 
 export default function ProductDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -66,6 +108,51 @@ export default function ProductDetailScreen() {
     setEditThreshold(false);
   };
 
+  const handleChangeImage = () => {
+    const options = ['Cancel', 'Take Photo', 'Choose from Library', ...(product.imageUri ? ['Remove Photo'] : [])];
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options,
+          cancelButtonIndex: 0,
+          destructiveButtonIndex: product.imageUri ? 3 : undefined,
+        },
+        async (index) => {
+          if (index === 1) {
+            const uri = await pickProductImage('camera');
+            if (uri) updateProduct(product.id, { imageUri: uri });
+          } else if (index === 2) {
+            const uri = await pickProductImage('library');
+            if (uri) updateProduct(product.id, { imageUri: uri });
+          } else if (index === 3 && product.imageUri) {
+            updateProduct(product.id, { imageUri: undefined });
+          }
+        },
+      );
+    } else {
+      Alert.alert('Product Photo', 'Choose a source', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Take Photo',
+          onPress: async () => {
+            const uri = await pickProductImage('camera');
+            if (uri) updateProduct(product.id, { imageUri: uri });
+          },
+        },
+        {
+          text: 'Choose from Library',
+          onPress: async () => {
+            const uri = await pickProductImage('library');
+            if (uri) updateProduct(product.id, { imageUri: uri });
+          },
+        },
+        ...(product.imageUri
+          ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: () => updateProduct(product.id, { imageUri: undefined }) }]
+          : []),
+      ]);
+    }
+  };
+
   const isWeb = Platform.OS === 'web';
   const topPad = isWeb ? insets.top + 67 : 0;
 
@@ -80,13 +167,31 @@ export default function ProductDetailScreen() {
       {/* Hero */}
       <View style={[styles.hero, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
         <View style={styles.heroTop}>
-          <View style={[styles.heroIcon, { backgroundColor: colors.muted }]}>
-            <Feather name="package" size={32} color={colors.mutedForeground} />
-          </View>
+          {/* Image / placeholder — tappable */}
+          <TouchableOpacity onPress={handleChangeImage} activeOpacity={0.8} style={styles.heroImageWrap}>
+            <View style={[styles.heroImageCircle, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              {product.imageUri ? (
+                <Image
+                  source={{ uri: product.imageUri }}
+                  style={styles.heroImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Feather name="package" size={32} color={colors.mutedForeground} />
+              )}
+            </View>
+            {/* Edit badge */}
+            <View style={[styles.heroImageBadge, { backgroundColor: colors.primary }]}>
+              <Feather name="camera" size={11} color="#fff" />
+            </View>
+          </TouchableOpacity>
+
+          {/* Delete button top-right */}
           <Pressable onPress={handleDelete} hitSlop={8} style={styles.deleteBtn}>
             <Feather name="trash-2" size={20} color={colors.destructive} />
           </Pressable>
         </View>
+
         <Text style={[styles.heroName, { color: colors.foreground }]}>{product.name}</Text>
         {product.brand && (
           <Text style={[styles.heroBrand, { color: colors.mutedForeground }]}>{product.brand}</Text>
@@ -227,8 +332,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
-  heroTop: { width: '100%', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  heroIcon: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  heroTop: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  heroImageWrap: {
+    position: 'relative',
+  },
+  heroImageCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  heroImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+  },
+  heroImageBadge: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   deleteBtn: { padding: 8 },
   heroName: { fontSize: 22, fontWeight: '700', fontFamily: 'Inter_700Bold', textAlign: 'center' },
   heroBrand: { fontSize: 14, fontFamily: 'Inter_400Regular' },

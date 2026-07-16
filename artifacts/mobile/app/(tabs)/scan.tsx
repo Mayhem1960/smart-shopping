@@ -72,6 +72,7 @@ export default function ScanScreen() {
         name: info?.name ?? '',
         brand: info?.brand ?? '',
         category: info?.category ?? '',
+        imageUri: info?.imageUrl ?? undefined,
         unit: 'unit',
         currentQuantity: 1,
         minThreshold: 1,

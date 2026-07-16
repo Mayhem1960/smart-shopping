@@ -35,6 +35,7 @@ export interface Product {
   name: string;
   brand?: string;
   category?: string;
+  imageUri?: string;
   unit: string;
   currentQuantity: number;
   minThreshold: number;

@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import {
+  ActionSheetIOS,
+  Alert,
+  Image,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -11,14 +14,17 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { useColors } from '@/hooks/useColors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Feather } from '@expo/vector-icons';
 
 export interface ProductFormData {
   barcode: string;
   name: string;
   brand: string;
   category: string;
+  imageUri?: string;
   unit: string;
   currentQuantity: number;
   minThreshold: number;
@@ -33,6 +39,36 @@ interface Props {
 
 const UNITS = ['unit', 'g', 'kg', 'ml', 'L', 'oz', 'lb', 'pack'];
 
+async function pickImage(source: 'camera' | 'library'): Promise<string | null> {
+  if (source === 'camera') {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Camera access is required to take a photo.');
+      return null;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    return result.canceled ? null : result.assets[0].uri;
+  } else {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Photo library access is required to choose a photo.');
+      return null;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+    return result.canceled ? null : result.assets[0].uri;
+  }
+}
+
 export default function AddProductModal({ visible, initialData, onConfirm, onCancel }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -40,6 +76,7 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
   const [name, setName] = useState(initialData.name ?? '');
   const [brand, setBrand] = useState(initialData.brand ?? '');
   const [category, setCategory] = useState(initialData.category ?? '');
+  const [imageUri, setImageUri] = useState<string | undefined>(initialData.imageUri);
   const [unit, setUnit] = useState(initialData.unit ?? 'unit');
   const [currentQty, setCurrentQty] = useState(String(initialData.currentQuantity ?? 1));
   const [minThreshold, setMinThreshold] = useState(String(initialData.minThreshold ?? 1));
@@ -50,6 +87,7 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
       setName(initialData.name ?? '');
       setBrand(initialData.brand ?? '');
       setCategory(initialData.category ?? '');
+      setImageUri(initialData.imageUri);
       setUnit(initialData.unit ?? 'unit');
       setCurrentQty(String(initialData.currentQuantity ?? 1));
       setMinThreshold(String(initialData.minThreshold ?? 1));
@@ -63,10 +101,55 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
       name: name.trim(),
       brand: brand.trim(),
       category: category.trim(),
+      imageUri,
       unit,
       currentQuantity: parseFloat(currentQty) || 1,
       minThreshold: parseFloat(minThreshold) || 1,
     });
+  };
+
+  const handleImagePress = () => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Cancel', 'Take Photo', 'Choose from Library', ...(imageUri ? ['Remove Photo'] : [])],
+          cancelButtonIndex: 0,
+          destructiveButtonIndex: imageUri ? 3 : undefined,
+        },
+        async (index) => {
+          if (index === 1) {
+            const uri = await pickImage('camera');
+            if (uri) setImageUri(uri);
+          } else if (index === 2) {
+            const uri = await pickImage('library');
+            if (uri) setImageUri(uri);
+          } else if (index === 3 && imageUri) {
+            setImageUri(undefined);
+          }
+        },
+      );
+    } else {
+      Alert.alert('Product Photo', 'Choose a source', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Take Photo',
+          onPress: async () => {
+            const uri = await pickImage('camera');
+            if (uri) setImageUri(uri);
+          },
+        },
+        {
+          text: 'Choose from Library',
+          onPress: async () => {
+            const uri = await pickImage('library');
+            if (uri) setImageUri(uri);
+          },
+        },
+        ...(imageUri
+          ? [{ text: 'Remove Photo', style: 'destructive' as const, onPress: () => setImageUri(undefined) }]
+          : []),
+      ]);
+    }
   };
 
   const labelStyle = [styles.label, { color: colors.mutedForeground }];
@@ -93,6 +176,25 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
         </View>
 
         <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+          {/* Image picker */}
+          <View style={styles.imagePicker}>
+            <TouchableOpacity onPress={handleImagePress} activeOpacity={0.8}>
+              <View style={[styles.imageCircle, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                {imageUri ? (
+                  <Image source={{ uri: imageUri }} style={styles.imageCircleImg} />
+                ) : (
+                  <Feather name="camera" size={28} color={colors.mutedForeground} />
+                )}
+                <View style={[styles.imageEditBadge, { backgroundColor: colors.primary }]}>
+                  <Feather name="edit-2" size={10} color="#fff" />
+                </View>
+              </View>
+            </TouchableOpacity>
+            <Text style={[styles.imageHint, { color: colors.mutedForeground }]}>
+              {imageUri ? 'Tap to change photo' : 'Tap to add photo'}
+            </Text>
+          </View>
+
           <Text style={labelStyle}>Product Name *</Text>
           <TextInput
             style={inputStyle}
@@ -203,6 +305,39 @@ const styles = StyleSheet.create({
   form: {
     padding: 20,
     gap: 8,
+  },
+  imagePicker: {
+    alignItems: 'center',
+    paddingVertical: 16,
+    gap: 8,
+  },
+  imageCircle: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  imageCircleImg: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+  },
+  imageEditBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  imageHint: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
   },
   label: {
     fontSize: 12,
