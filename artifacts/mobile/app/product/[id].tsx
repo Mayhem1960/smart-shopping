@@ -111,7 +111,7 @@ export default function ProductDetailScreen() {
             onPress={() => setConsumeVisible(true)}
             style={[styles.logBtn, { backgroundColor: colors.primary, borderRadius: colors.radius - 2 }]}
           >
-            <Feather name="plus-minus" size={16} color={colors.primaryForeground} />
+            <Feather name="activity" size={16} color={colors.primaryForeground} />
             <Text style={[styles.logBtnTxt, { color: colors.primaryForeground }]}>Log</Text>
           </TouchableOpacity>
         </View>

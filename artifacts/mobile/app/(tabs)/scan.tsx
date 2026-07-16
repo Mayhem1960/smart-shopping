@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Camera, CameraView } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useShopping } from '@/context/ShoppingContext';
@@ -25,7 +25,7 @@ export default function ScanScreen() {
   const insets = useSafeAreaInsets();
   const { getProductByBarcode, addProduct, logConsumption, logRestock } = useShopping();
 
-  const [permission, requestPermission] = Camera.useCameraPermissions();
+  const [permission, requestPermission] = useCameraPermissions();
   const [scanning, setScanning] = useState(true);
   const [looking, setLooking] = useState(false);
   const [webBarcode, setWebBarcode] = useState('');
