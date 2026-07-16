@@ -181,7 +181,11 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
             <TouchableOpacity onPress={handleImagePress} activeOpacity={0.8}>
               <View style={[styles.imageCircle, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                 {imageUri ? (
-                  <Image source={{ uri: imageUri }} style={styles.imageCircleImg} />
+                  <Image
+                    source={{ uri: imageUri }}
+                    style={styles.imageCircleImg}
+                    onError={() => setImageUri(undefined)}
+                  />
                 ) : (
                   <Feather name="camera" size={28} color={colors.mutedForeground} />
                 )}

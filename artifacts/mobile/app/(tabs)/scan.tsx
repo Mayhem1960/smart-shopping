@@ -134,6 +134,7 @@ export default function ScanScreen() {
         </View>
 
         <AddProductModal
+          key={pendingBarcode}
           visible={addModalVisible}
           initialData={pendingProduct}
           onConfirm={handleAddConfirm}
