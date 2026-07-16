@@ -67,7 +67,7 @@ export default function ShoppingListItemRow({ item, onToggle, onDelete }: Props)
       </Pressable>
 
       <Pressable onPress={onDelete} hitSlop={8} style={styles.deleteBtn}>
-        <Feather name="x" size={16} color={colors.mutedForeground} />
+        <Feather name="trash-2" size={16} color={colors.mutedForeground} />
       </Pressable>
     </View>
   );
