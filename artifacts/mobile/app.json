@@ -17,7 +17,13 @@
     "ios": {
       "supportsTablet": false
     },
-    "android": {},
+    "android": {
+      "package": "com.smartshopping.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#0D9488"
+      }
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },
