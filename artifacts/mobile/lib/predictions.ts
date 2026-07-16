@@ -63,7 +63,7 @@ export function stockFraction(product: Product): number {
 
 export function needsRestock(product: Product): boolean {
   const status = getStockStatus(product);
-  if (status === 'out' || status === 'critical') return true;
+  if (status === 'out' || status === 'critical' || status === 'low') return true;
   const days = getDaysUntilEmpty(product);
   if (days !== null && days < 5) return true;
   return false;

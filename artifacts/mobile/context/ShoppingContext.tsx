@@ -115,8 +115,8 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
         quantity,
         type: 'consume',
       };
-      setAndSaveProducts((prev) =>
-        prev.map((p) =>
+      setAndSaveProducts((prev) => {
+        const updated = prev.map((p) =>
           p.id === productId
             ? {
                 ...p,
@@ -124,10 +124,36 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
                 usageHistory: [...p.usageHistory, event],
               }
             : p,
-        ),
-      );
+        );
+        // Sync shopping list immediately after stock changes
+        setAndSaveList((list) => {
+          const existingAutoIds = new Set(
+            list.filter((i) => i.isAuto && i.productId).map((i) => i.productId!),
+          );
+          const newItems: ShoppingItem[] = [];
+          for (const product of updated) {
+            if (needsRestock(product) && !existingAutoIds.has(product.id)) {
+              newItems.push({
+                id: generateId(),
+                productId: product.id,
+                name: product.name,
+                quantity: product.minThreshold > 0 ? product.minThreshold : 1,
+                unit: product.unit,
+                checked: false,
+                isAuto: true,
+                addedAt: new Date().toISOString(),
+              });
+            }
+          }
+          const filtered = list.filter(
+            (i) => !i.isAuto || needsRestock(updated.find((p) => p.id === i.productId) as Product),
+          );
+          return [...filtered, ...newItems];
+        });
+        return updated;
+      });
     },
-    [setAndSaveProducts],
+    [setAndSaveProducts, setAndSaveList],
   );
 
   const logRestock = useCallback(
@@ -138,8 +164,8 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
         quantity,
         type: 'restock',
       };
-      setAndSaveProducts((prev) =>
-        prev.map((p) =>
+      setAndSaveProducts((prev) => {
+        const updated = prev.map((p) =>
           p.id === productId
             ? {
                 ...p,
@@ -147,12 +173,34 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
                 usageHistory: [...p.usageHistory, event],
               }
             : p,
-        ),
-      );
-      // Remove auto item from list if exists
-      setAndSaveList((prev) =>
-        prev.filter((i) => !(i.productId === productId && i.isAuto)),
-      );
+        );
+        // Remove auto item if restocked above threshold; re-sync anything still low
+        setAndSaveList((list) => {
+          const existingAutoIds = new Set(
+            list.filter((i) => i.isAuto && i.productId).map((i) => i.productId!),
+          );
+          const newItems: ShoppingItem[] = [];
+          for (const product of updated) {
+            if (needsRestock(product) && !existingAutoIds.has(product.id)) {
+              newItems.push({
+                id: generateId(),
+                productId: product.id,
+                name: product.name,
+                quantity: product.minThreshold > 0 ? product.minThreshold : 1,
+                unit: product.unit,
+                checked: false,
+                isAuto: true,
+                addedAt: new Date().toISOString(),
+              });
+            }
+          }
+          const filtered = list.filter(
+            (i) => !i.isAuto || needsRestock(updated.find((p) => p.id === i.productId) as Product),
+          );
+          return [...filtered, ...newItems];
+        });
+        return updated;
+      });
     },
     [setAndSaveProducts, setAndSaveList],
   );
