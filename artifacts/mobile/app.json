@@ -1,9 +1,9 @@
 {
   "expo": {
     "name": "Smart Shopping",
-
     "slug": "mobile",
     "version": "1.0.0",
+    "owner": "mayhem1960",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile",
@@ -22,7 +22,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#0D9488"
-      }
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -54,6 +58,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c2e0b1cc-7cc2-4dd0-8736-ca01c8bb226f"
+      }
     }
   }
 }
