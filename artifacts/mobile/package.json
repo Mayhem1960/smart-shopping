@@ -57,6 +57,9 @@
   },
   "dependencies": {
     "expo-camera": "~17.0.10",
+    "expo-document-picker": "^57.0.1",
+    "expo-file-system": "^57.0.1",
+    "expo-sharing": "^57.0.5",
     "lucide-react-native": "^1.24.0"
   }
 }

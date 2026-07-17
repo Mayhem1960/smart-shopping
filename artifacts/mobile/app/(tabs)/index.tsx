@@ -7,7 +7,7 @@ import { useShopping } from '@/context/ShoppingContext';
 import ProductCard from '@/components/ProductCard';
 import EmptyState from '@/components/EmptyState';
 import { getDaysUntilEmpty, getStockStatus, needsRestock } from '@/lib/predictions';
-import { Camera, Package, AlertTriangle, ShoppingCart, ShoppingBag, type LucideIcon } from 'lucide-react-native';
+import { Camera, Package, AlertTriangle, ShoppingCart, ShoppingBag, ArrowLeftRight, type LucideIcon } from 'lucide-react-native';
 import { Platform } from 'react-native';
 
 export default function HomeScreen() {
@@ -45,8 +45,20 @@ export default function HomeScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.greeting, { color: colors.mutedForeground }]}>{greeting}</Text>
-        <Text style={[styles.date, { color: colors.foreground }]}>{dateStr}</Text>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>{greeting}</Text>
+            <Text style={[styles.date, { color: colors.foreground }]}>{dateStr}</Text>
+          </View>
+          <Pressable
+            onPress={() => router.push('/transfer')}
+            hitSlop={10}
+            style={[styles.transferBtn, { backgroundColor: colors.muted, borderRadius: 20 }]}
+          >
+            <ArrowLeftRight size={16} color={colors.primary} />
+            <Text style={[styles.transferBtnTxt, { color: colors.primary }]}>Transfer</Text>
+          </Pressable>
+        </View>
       </View>
 
       {/* Stats row */}
@@ -213,8 +225,11 @@ function StatCard({
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: { paddingHorizontal: 20, marginBottom: 20 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   greeting: { fontSize: 14, fontFamily: 'Inter_400Regular', marginBottom: 2 },
   date: { fontSize: 22, fontWeight: '700', fontFamily: 'Inter_700Bold' },
+  transferBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8 },
+  transferBtnTxt: { fontSize: 13, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },
   statsRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginBottom: 8 },
   statCard: {
     flex: 1,

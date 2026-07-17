@@ -53,7 +53,8 @@
           "photosPermission": "Smart Shopping needs photo library access to add product images.",
           "cameraPermission": "Smart Shopping needs camera access to photograph products."
         }
-      ]
+      ],
+      "expo-document-picker"
     ],
     "experiments": {
       "typedRoutes": true,

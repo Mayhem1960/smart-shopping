@@ -27,6 +27,7 @@ interface ShoppingContextType {
   toggleShoppingItem: (id: string) => void;
   clearCheckedItems: () => void;
   syncAutoItems: () => void;
+  reloadData: () => Promise<void>;
 }
 
 const ShoppingContext = createContext<ShoppingContextType | null>(null);
@@ -271,6 +272,14 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
     });
   }, [setAndSaveProducts, setAndSaveList]);
 
+  const reloadData = useCallback(async () => {
+    const [p, s] = await Promise.all([loadProducts(), loadShoppingList()]);
+    setProducts(p);
+    setShoppingList(s);
+    productsRef.current = p;
+    shoppingListRef.current = s;
+  }, []);
+
   return (
     <ShoppingContext.Provider
       value={{
@@ -289,6 +298,7 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
         toggleShoppingItem,
         clearCheckedItems,
         syncAutoItems,
+        reloadData,
       }}
     >
       {children}
