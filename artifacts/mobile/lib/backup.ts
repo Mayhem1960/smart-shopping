@@ -1,4 +1,9 @@
-import { File, Paths } from 'expo-file-system';
+import {
+  cacheDirectory,
+  writeAsStringAsync,
+  readAsStringAsync,
+  EncodingType,
+} from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import * as DocumentPicker from 'expo-document-picker';
 import { loadProducts, loadShoppingList, saveProducts, saveShoppingList } from './storage';
@@ -28,15 +33,17 @@ export async function exportDatabase(): Promise<void> {
     shoppingList,
   };
 
-  const file = new File(Paths.cache, BACKUP_FILENAME);
-  file.write(JSON.stringify(payload, null, 2));
+  const path = (cacheDirectory ?? '') + BACKUP_FILENAME;
+  await writeAsStringAsync(path, JSON.stringify(payload, null, 2), {
+    encoding: EncodingType.UTF8,
+  });
 
   const canShare = await Sharing.isAvailableAsync();
   if (!canShare) {
     throw new Error('Sharing is not available on this device.');
   }
 
-  await Sharing.shareAsync(file.uri, {
+  await Sharing.shareAsync(path, {
     mimeType: 'application/json',
     dialogTitle: 'Send database via Bluetooth or another app',
     UTI: 'public.json',
@@ -54,8 +61,9 @@ export async function importDatabase(): Promise<{ products: number; shoppingList
     throw new Error('CANCELLED');
   }
 
-  const file = new File(result.assets[0].uri);
-  const raw = await file.text();
+  const raw = await readAsStringAsync(result.assets[0].uri, {
+    encoding: EncodingType.UTF8,
+  });
 
   let data: BackupData;
   try {
