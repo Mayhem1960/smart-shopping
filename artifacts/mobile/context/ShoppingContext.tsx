@@ -23,6 +23,7 @@ interface ShoppingContextType {
   logConsumption: (productId: string, quantity: number) => void;
   logRestock: (productId: string, quantity: number) => void;
   addShoppingItem: (item: Omit<ShoppingItem, 'id' | 'addedAt'>) => void;
+  updateShoppingItem: (id: string, updates: Partial<Pick<ShoppingItem, 'quantity' | 'unit' | 'name'>>) => void;
   removeShoppingItem: (id: string) => void;
   toggleShoppingItem: (id: string) => void;
   clearCheckedItems: () => void;
@@ -272,6 +273,13 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
     });
   }, [setAndSaveProducts, setAndSaveList]);
 
+  const updateShoppingItem = useCallback(
+    (id: string, updates: Partial<Pick<ShoppingItem, 'quantity' | 'unit' | 'name'>>) => {
+      setAndSaveList((prev) => prev.map((i) => (i.id === id ? { ...i, ...updates } : i)));
+    },
+    [setAndSaveList],
+  );
+
   const reloadData = useCallback(async () => {
     const [p, s] = await Promise.all([loadProducts(), loadShoppingList()]);
     setProducts(p);
@@ -298,6 +306,7 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
         toggleShoppingItem,
         clearCheckedItems,
         syncAutoItems,
+        updateShoppingItem,
         reloadData,
       }}
     >

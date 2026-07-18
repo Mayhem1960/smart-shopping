@@ -21,7 +21,7 @@ import { Platform } from 'react-native';
 export default function ListScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { shoppingList, addShoppingItem, removeShoppingItem, toggleShoppingItem, clearCheckedItems, syncAutoItems } =
+  const { shoppingList, addShoppingItem, updateShoppingItem, removeShoppingItem, toggleShoppingItem, clearCheckedItems, syncAutoItems } =
     useShopping();
 
   const [addName, setAddName] = useState('');
@@ -115,6 +115,7 @@ export default function ListScreen() {
               item={s.item}
               onToggle={() => toggleShoppingItem(s.item.id)}
               onDelete={() => removeShoppingItem(s.item.id)}
+              onUpdateQuantity={(qty) => updateShoppingItem(s.item.id, { quantity: qty })}
             />
           );
         }}

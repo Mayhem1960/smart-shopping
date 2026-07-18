@@ -48,8 +48,7 @@ async function pickImage(source: 'camera' | 'library'): Promise<string | null> {
     }
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
+      allowsEditing: false,
       quality: 0.7,
     });
     return result.canceled ? null : result.assets[0].uri;
@@ -61,8 +60,7 @@ async function pickImage(source: 'camera' | 'library'): Promise<string | null> {
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
+      allowsEditing: false,
       quality: 0.7,
     });
     return result.canceled ? null : result.assets[0].uri;
@@ -162,7 +160,8 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onCancel}>
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: colors.background }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'android' ? 0 : 0}
       >
         {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 8 }]}>
@@ -175,7 +174,12 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
           </Pressable>
         </View>
 
-        <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={styles.form}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          showsVerticalScrollIndicator={false}
+        >
           {/* Image picker */}
           <View style={styles.imagePicker}>
             <TouchableOpacity onPress={handleImagePress} activeOpacity={0.8}>
@@ -258,6 +262,7 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
             placeholder="1"
             placeholderTextColor={colors.mutedForeground}
             keyboardType="decimal-pad"
+            selectTextOnFocus
           />
 
           <Text style={labelStyle}>Low Stock Threshold</Text>
@@ -268,12 +273,13 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
             placeholder="1"
             placeholderTextColor={colors.mutedForeground}
             keyboardType="decimal-pad"
+            selectTextOnFocus
           />
           <Text style={[styles.hint, { color: colors.mutedForeground }]}>
             You'll be alerted to restock when quantity falls to this level.
           </Text>
 
-          <View style={{ height: 40 }} />
+          <View style={{ height: 60 }} />
         </ScrollView>
       </KeyboardAvoidingView>
     </Modal>

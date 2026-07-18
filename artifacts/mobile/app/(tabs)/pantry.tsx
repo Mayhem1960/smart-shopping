@@ -7,10 +7,12 @@ import { useShopping } from '@/context/ShoppingContext';
 import ProductCard from '@/components/ProductCard';
 import EmptyState from '@/components/EmptyState';
 import AddProductModal, { ProductFormData } from '@/components/AddProductModal';
-import { Search, X, Plus, Package } from 'lucide-react-native';
+import { Search, X, Plus, Package, ArrowUpDown } from 'lucide-react-native';
 import { getStockStatus } from '@/lib/predictions';
+import { Platform } from 'react-native';
 
 type FilterType = 'all' | 'low' | 'ok';
+type SortType = 'status' | 'name' | 'category';
 
 export default function PantryScreen() {
   const colors = useColors();
@@ -20,12 +22,25 @@ export default function PantryScreen() {
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<FilterType>('all');
+  const [sort, setSort] = useState<SortType>('status');
   const [addModalVisible, setAddModalVisible] = useState(false);
+
+  const SORT_CYCLE: SortType[] = ['status', 'name', 'category'];
+  const SORT_LABELS: Record<SortType, string> = {
+    status: 'By Status',
+    name: 'By Name',
+    category: 'By Category',
+  };
+
+  const cycleSort = () => {
+    const idx = SORT_CYCLE.indexOf(sort);
+    setSort(SORT_CYCLE[(idx + 1) % SORT_CYCLE.length]);
+  };
 
   const filtered = products
     .filter((p) => {
       const q = search.toLowerCase();
-      if (q && !p.name.toLowerCase().includes(q) && !p.brand?.toLowerCase().includes(q)) return false;
+      if (q && !p.name.toLowerCase().includes(q) && !p.brand?.toLowerCase().includes(q) && !p.category?.toLowerCase().includes(q)) return false;
       if (filter === 'low') {
         const s = getStockStatus(p);
         return s === 'low' || s === 'critical' || s === 'out';
@@ -34,7 +49,17 @@ export default function PantryScreen() {
       return true;
     })
     .sort((a, b) => {
-      const order = { out: 0, critical: 1, low: 2, ok: 3 };
+      if (sort === 'name') {
+        return a.name.localeCompare(b.name);
+      }
+      if (sort === 'category') {
+        const ca = (a.category ?? '').toLowerCase();
+        const cb = (b.category ?? '').toLowerCase();
+        if (ca !== cb) return ca.localeCompare(cb);
+        return a.name.localeCompare(b.name);
+      }
+      // Default: by stock status urgency
+      const order: Record<string, number> = { out: 0, critical: 1, low: 2, ok: 3 };
       return order[getStockStatus(a)] - order[getStockStatus(b)];
     });
 
@@ -49,14 +74,14 @@ export default function PantryScreen() {
     { key: 'ok', label: 'OK' },
   ];
 
-  const isWeb = require('react-native').Platform.OS === 'web';
+  const isWeb = Platform.OS === 'web';
   const topPad = isWeb ? insets.top + 67 : 0;
   const bottomPad = isWeb ? 34 : 0;
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background, paddingTop: topPad }]}>
       {/* Search bar */}
-      <View style={[styles.searchRow, { backgroundColor: colors.muted, borderRadius: colors.radius, margin: 16 }]}>
+      <View style={[styles.searchRow, { backgroundColor: colors.muted, borderRadius: colors.radius, margin: 16, marginBottom: 10 }]}>
         <Search size={16} color={colors.mutedForeground} />
         <TextInput
           style={[styles.searchInput, { color: colors.foreground }]}
@@ -73,7 +98,7 @@ export default function PantryScreen() {
         )}
       </View>
 
-      {/* Filter chips */}
+      {/* Filter chips + sort toggle */}
       <View style={styles.filterRow}>
         {FILTERS.map((f) => (
           <Pressable
@@ -93,7 +118,14 @@ export default function PantryScreen() {
           </Pressable>
         ))}
         <View style={{ flex: 1 }} />
-        <Text style={[styles.countTxt, { color: colors.mutedForeground }]}>{filtered.length} items</Text>
+        <Pressable
+          onPress={cycleSort}
+          style={[styles.sortBtn, { backgroundColor: colors.muted, borderRadius: 16 }]}
+          hitSlop={4}
+        >
+          <ArrowUpDown size={13} color={colors.primary} />
+          <Text style={[styles.sortTxt, { color: colors.primary }]}>{SORT_LABELS[sort]}</Text>
+        </Pressable>
       </View>
 
       <FlatList
@@ -159,14 +191,23 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 8,
     alignItems: 'center',
+    flexWrap: 'nowrap',
   },
   chip: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  countTxt: {
+  sortBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  sortTxt: {
     fontSize: 12,
-    fontFamily: 'Inter_400Regular',
+    fontFamily: 'Inter_600SemiBold',
+    fontWeight: '600',
   },
   fab: {
     position: 'absolute',
