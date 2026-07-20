@@ -69,6 +69,8 @@ export default function ProductDetailScreen() {
   const [consumeVisible, setConsumeVisible] = useState(false);
   const [editThreshold, setEditThreshold] = useState(false);
   const [thresholdVal, setThresholdVal] = useState('');
+  const [editCategory, setEditCategory] = useState(false);
+  const [categoryVal, setCategoryVal] = useState('');
 
   const product = getProduct(id);
 
@@ -106,6 +108,11 @@ export default function ProductDetailScreen() {
     const val = parseFloat(thresholdVal);
     if (val > 0) updateProduct(product.id, { minThreshold: val });
     setEditThreshold(false);
+  };
+
+  const handleSaveCategory = () => {
+    updateProduct(product.id, { category: categoryVal.trim() || undefined });
+    setEditCategory(false);
   };
 
   const handleChangeImage = () => {
@@ -268,17 +275,55 @@ export default function ProductDetailScreen() {
         )}
       </View>
 
-      {/* Barcode */}
+      {/* Barcode + Category */}
       <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
         <View style={styles.barcodeRow}>
           <Hash size={14} color={colors.mutedForeground} />
           <Text style={[styles.barcodeVal, { color: colors.mutedForeground }]}>{product.barcode || 'No barcode'}</Text>
-          {product.category && (
-            <View style={[styles.catBadge, { backgroundColor: colors.secondary }]}>
-              <Text style={[styles.catTxt, { color: colors.secondaryForeground }]}>{product.category}</Text>
-            </View>
-          )}
         </View>
+        {/* Category row — always visible, always editable */}
+        <View style={styles.thresholdRow}>
+          <Text style={[styles.thresholdLabel, { color: colors.mutedForeground }]}>
+            Category:{' '}
+            {product.category ? (
+              <Text style={{ color: colors.foreground, fontFamily: 'Inter_500Medium' }}>{product.category}</Text>
+            ) : (
+              <Text style={{ fontStyle: 'italic' }}>None</Text>
+            )}
+          </Text>
+          <Pressable
+            onPress={() => { setCategoryVal(product.category ?? ''); setEditCategory(true); }}
+            hitSlop={8}
+          >
+            <Pencil size={13} color={colors.primary} />
+          </Pressable>
+        </View>
+        {editCategory && (
+          <View style={styles.editThreshRow}>
+            <TextInput
+              style={[
+                styles.editCatInput,
+                { borderColor: colors.border, color: colors.foreground, backgroundColor: colors.muted, borderRadius: colors.radius - 4 },
+              ]}
+              value={categoryVal}
+              onChangeText={setCategoryVal}
+              placeholder="e.g. Dairy"
+              placeholderTextColor={colors.mutedForeground}
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={handleSaveCategory}
+            />
+            <TouchableOpacity
+              onPress={handleSaveCategory}
+              style={[styles.saveThreshBtn, { backgroundColor: colors.primary, borderRadius: colors.radius - 4 }]}
+            >
+              <Text style={{ color: '#fff', fontWeight: '600', fontFamily: 'Inter_600SemiBold' }}>Save</Text>
+            </TouchableOpacity>
+            <Pressable onPress={() => setEditCategory(false)} hitSlop={8}>
+              <X size={18} color={colors.mutedForeground} />
+            </Pressable>
+          </View>
+        )}
       </View>
 
       {/* History */}
@@ -389,6 +434,7 @@ const styles = StyleSheet.create({
   thresholdLabel: { fontSize: 12, fontFamily: 'Inter_400Regular', flex: 1 },
   editThreshRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   editThreshInput: { height: 38, borderWidth: 1, paddingHorizontal: 10, fontSize: 15, width: 80, fontFamily: 'Inter_400Regular' },
+  editCatInput: { height: 38, borderWidth: 1, paddingHorizontal: 10, fontSize: 15, flex: 1, fontFamily: 'Inter_400Regular' },
   saveThreshBtn: { paddingHorizontal: 14, paddingVertical: 8 },
   cardSectionTitle: { fontSize: 15, fontWeight: '700', fontFamily: 'Inter_700Bold' },
   predGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
