@@ -59,6 +59,8 @@ export interface ShoppingItem {
   checked: boolean;
   isAuto: boolean;
   addedAt: string;
+  storePromotion?: string;  // Store name if a local deal was found
+  promoPrice?: string;      // Promotional price string
 }
 
 export function generateId(): string {

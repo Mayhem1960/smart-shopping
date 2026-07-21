@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   ActionSheetIOS,
   Alert,
   Image,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -65,6 +66,8 @@ export default function ProductDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { getProduct, updateProduct, deleteProduct, logConsumption, logRestock } = useShopping();
+
+  const scrollRef = useRef<ScrollView>(null);
 
   const [consumeVisible, setConsumeVisible] = useState(false);
   const [editThreshold, setEditThreshold] = useState(false);
@@ -166,10 +169,17 @@ export default function ProductDetailScreen() {
   const recentEvents = [...product.usageHistory].reverse().slice(0, 10);
 
   return (
+    <KeyboardAvoidingView
+      style={{ flex: 1, backgroundColor: colors.background }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
+    >
     <ScrollView
+      ref={scrollRef}
       style={[styles.root, { backgroundColor: colors.background }]}
       contentContainerStyle={{ paddingBottom: insets.bottom + 40, paddingTop: topPad }}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
     >
       {/* Hero */}
       <View style={[styles.hero, { backgroundColor: colors.card, borderBottomColor: colors.border }]}>
@@ -312,6 +322,9 @@ export default function ProductDetailScreen() {
               autoFocus
               returnKeyType="done"
               onSubmitEditing={handleSaveCategory}
+              onFocus={() => {
+                setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
+              }}
             />
             <TouchableOpacity
               onPress={handleSaveCategory}
@@ -356,6 +369,7 @@ export default function ProductDetailScreen() {
         onCancel={() => setConsumeVisible(false)}
       />
     </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 

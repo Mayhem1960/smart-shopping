@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   FlatList,
   Pressable,
   StyleSheet,
@@ -7,13 +8,15 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { useShopping } from '@/context/ShoppingContext';
+import { usePromotions } from '@/context/PromotionsContext';
 import ShoppingListItemRow from '@/components/ShoppingListItemRow';
 import EmptyState from '@/components/EmptyState';
-import { Plus, X, PlusCircle, ShoppingCart } from 'lucide-react-native';
+import { Plus, X, PlusCircle, ShoppingCart, MapPin, Tag, RefreshCw, XCircle } from 'lucide-react-native';
 import { ShoppingItem } from '@/lib/storage';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
@@ -23,11 +26,13 @@ export default function ListScreen() {
   const insets = useSafeAreaInsets();
   const { shoppingList, addShoppingItem, updateShoppingItem, removeShoppingItem, toggleShoppingItem, clearCheckedItems, syncAutoItems } =
     useShopping();
+  const { settings, isLoading: promoLoading, enablePromotions, disablePromotions, refreshDeals, getDeal } = usePromotions();
 
   const [addName, setAddName] = useState('');
   const [addQty, setAddQty] = useState('1');
   const [addUnit, setAddUnit] = useState('unit');
   const [addExpanded, setAddExpanded] = useState(false);
+  const [showConsent, setShowConsent] = useState(false);
 
   const isWeb = Platform.OS === 'web';
   const topPad = isWeb ? insets.top + 67 : 0;
@@ -36,6 +41,20 @@ export default function ListScreen() {
   const autoItems = shoppingList.filter((i) => i.isAuto && !i.checked);
   const manualItems = shoppingList.filter((i) => !i.isAuto && !i.checked);
   const checkedItems = shoppingList.filter((i) => i.checked);
+
+  // Annotate list items with deal info when promotions are enabled
+  const annotatedList: ShoppingItem[] = settings.enabled
+    ? shoppingList.map((item) => {
+        if (item.checked) return item;
+        const deal = getDeal(item.name);
+        if (!deal) return item;
+        return { ...item, storePromotion: deal.store, promoPrice: deal.price };
+      })
+    : shoppingList;
+
+  const annotatedAuto = annotatedList.filter((i) => i.isAuto && !i.checked);
+  const annotatedManual = annotatedList.filter((i) => !i.isAuto && !i.checked);
+  const annotatedChecked = annotatedList.filter((i) => i.checked);
 
   const handleAdd = () => {
     if (!addName.trim()) return;
@@ -57,19 +76,55 @@ export default function ListScreen() {
     syncAutoItems();
   };
 
+  const handleEnablePromotions = () => {
+    setShowConsent(false);
+    enablePromotions().then(() => {
+      // Refresh deals for current list items after location is resolved
+      const names = shoppingList.map((i) => i.name);
+      if (names.length > 0) refreshDeals(names);
+    });
+  };
+
+  const handleRefreshDeals = () => {
+    const names = shoppingList.map((i) => i.name);
+    if (names.length === 0) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    refreshDeals(names);
+  };
+
+  const handleDisablePromotions = () => {
+    Alert.alert(
+      'Disable Promotions',
+      'Stop checking for local store deals?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Disable', style: 'destructive', onPress: disablePromotions },
+      ],
+    );
+  };
+
   type Section =
     | { type: 'header'; title: string; action?: { label: string; onPress: () => void } }
     | { type: 'item'; item: ShoppingItem }
-    | { type: 'empty'; message: string };
+    | { type: 'empty'; message: string }
+    | { type: 'promo-banner' }
+    | { type: 'promo-active' };
 
   const sections: Section[] = [];
 
-  if (autoItems.length > 0 || true) {
+  // Promotions banner (top)
+  if (!settings.enabled) {
+    sections.push({ type: 'promo-banner' });
+  } else {
+    sections.push({ type: 'promo-active' });
+  }
+
+  if (annotatedAuto.length > 0 || true) {
     sections.push({ type: 'header', title: 'Smart Suggestions', action: { label: 'Refresh', onPress: handleSync } });
-    if (autoItems.length === 0) {
+    if (annotatedAuto.length === 0) {
       sections.push({ type: 'empty', message: 'No smart suggestions right now' });
     } else {
-      autoItems.forEach((item) => sections.push({ type: 'item', item }));
+      annotatedAuto.forEach((item) => sections.push({ type: 'item', item }));
     }
   }
 
@@ -78,21 +133,96 @@ export default function ListScreen() {
     title: 'My List',
     action: checkedItems.length > 0 ? { label: 'Clear checked', onPress: clearCheckedItems } : undefined,
   });
-  if (manualItems.length === 0 && checkedItems.length === 0) {
+  if (annotatedManual.length === 0 && annotatedChecked.length === 0) {
     sections.push({ type: 'empty', message: 'Your list is empty — add items below' });
   } else {
-    manualItems.forEach((item) => sections.push({ type: 'item', item }));
-    checkedItems.forEach((item) => sections.push({ type: 'item', item }));
+    annotatedManual.forEach((item) => sections.push({ type: 'item', item }));
+    annotatedChecked.forEach((item) => sections.push({ type: 'item', item }));
   }
 
   return (
     <View style={[styles.root, { backgroundColor: colors.background, paddingTop: topPad }]}>
+      {/* Promotions Consent Modal Overlay */}
+      {showConsent && (
+        <View style={styles.consentOverlay}>
+          <View style={[styles.consentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.consentIconRow}>
+              <View style={[styles.consentIconCircle, { backgroundColor: '#dcfce7' }]}>
+                <Tag size={24} color="#16a34a" />
+              </View>
+            </View>
+            <Text style={[styles.consentTitle, { color: colors.foreground }]}>Local Store Promotions</Text>
+            <Text style={[styles.consentBody, { color: colors.mutedForeground }]}>
+              Smart Shopping can check for promotions and deals at nearby supermarkets in your city and match them to your shopping list.{'\n\n'}
+              This requires access to your <Text style={{ fontFamily: 'Inter_600SemiBold', color: colors.foreground }}>location</Text> to find your city. No data is shared with third parties.
+            </Text>
+            <TouchableOpacity
+              onPress={handleEnablePromotions}
+              style={[styles.consentBtn, { backgroundColor: '#16a34a', borderRadius: colors.radius - 2 }]}
+            >
+              <MapPin size={16} color="#fff" />
+              <Text style={styles.consentBtnTxt}>Enable & Allow Location</Text>
+            </TouchableOpacity>
+            <Pressable onPress={() => setShowConsent(false)} style={styles.consentCancel}>
+              <Text style={[styles.consentCancelTxt, { color: colors.mutedForeground }]}>Not now</Text>
+            </Pressable>
+          </View>
+        </View>
+      )}
+
       <FlatList
         data={sections}
         keyExtractor={(s, i) =>
-          s.type === 'item' ? s.item.id : s.type === 'header' ? `h-${s.title}` : `e-${i}`
+          s.type === 'item' ? s.item.id : `${s.type}-${i}`
         }
         renderItem={({ item: s }) => {
+          if (s.type === 'promo-banner') {
+            return (
+              <Pressable
+                onPress={() => setShowConsent(true)}
+                style={[styles.promoBanner, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}
+              >
+                <Tag size={16} color="#16a34a" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.promoBannerTitle}>Find local store deals</Text>
+                  <Text style={styles.promoBannerSub}>Tap to enable promotions in your city</Text>
+                </View>
+                <Text style={styles.promoBannerAction}>Enable →</Text>
+              </Pressable>
+            );
+          }
+
+          if (s.type === 'promo-active') {
+            const city = settings.locationInfo?.city;
+            const dealsCount = settings.deals.length;
+            return (
+              <View style={[styles.promoActive, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
+                <Tag size={14} color="#16a34a" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.promoActiveTitle}>
+                    {dealsCount > 0 ? `${dealsCount} deals found` : 'Promotions active'}
+                    {city ? ` · ${city}` : ''}
+                  </Text>
+                  {settings.lastFetchedAt && (
+                    <Text style={styles.promoActiveSub}>
+                      Updated {new Date(settings.lastFetchedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </Text>
+                  )}
+                </View>
+                {promoLoading ? (
+                  <ActivityIndicator size="small" color="#16a34a" />
+                ) : (
+                  <Pressable onPress={handleRefreshDeals} hitSlop={8}>
+                    <RefreshCw size={16} color="#16a34a" />
+                  </Pressable>
+                )}
+                <Pressable onPress={handleDisablePromotions} hitSlop={8} style={{ marginLeft: 8 }}>
+                  <XCircle size={16} color="#6b7280" />
+                </Pressable>
+              </View>
+            );
+          }
+
           if (s.type === 'header') {
             return (
               <View style={[styles.sectionHeader, { borderBottomColor: colors.border }]}>
@@ -203,6 +333,106 @@ export default function ListScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  consentOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    zIndex: 100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  consentCard: {
+    width: '100%',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 24,
+    gap: 12,
+    alignItems: 'center',
+  },
+  consentIconRow: { marginBottom: 4 },
+  consentIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  consentTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter_700Bold',
+    textAlign: 'center',
+  },
+  consentBody: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  consentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    marginTop: 4,
+    width: '100%',
+    justifyContent: 'center',
+  },
+  consentBtnTxt: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  consentCancel: { paddingVertical: 8 },
+  consentCancelTxt: { fontSize: 14, fontFamily: 'Inter_400Regular' },
+  promoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    padding: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  promoBannerTitle: {
+    fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#16a34a',
+  },
+  promoBannerSub: {
+    fontSize: 11,
+    fontFamily: 'Inter_400Regular',
+    color: '#4ade80',
+  },
+  promoBannerAction: {
+    fontSize: 12,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#16a34a',
+  },
+  promoActive: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  promoActiveTitle: {
+    fontSize: 12,
+    fontFamily: 'Inter_600SemiBold',
+    color: '#16a34a',
+  },
+  promoActiveSub: {
+    fontSize: 10,
+    fontFamily: 'Inter_400Regular',
+    color: '#86efac',
+  },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',

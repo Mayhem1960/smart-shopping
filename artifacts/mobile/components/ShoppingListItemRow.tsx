@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useColors } from '@/hooks/useColors';
 import { ShoppingItem } from '@/lib/storage';
-import { Check, Trash2, Minus, Plus } from 'lucide-react-native';
+import { Check, Trash2, Minus, Plus, Tag } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 interface Props {
@@ -43,13 +43,15 @@ export default function ShoppingListItemRow({ item, onToggle, onDelete, onUpdate
     if (!editing) setQtyText(String(item.quantity));
   }, [item.quantity, editing]);
 
+  const hasPromo = !!(item.storePromotion && !item.checked);
+
   return (
     <View
       style={[
         styles.row,
         {
           backgroundColor: colors.card,
-          borderColor: colors.border,
+          borderColor: hasPromo ? '#16a34a40' : colors.border,
           borderRadius: colors.radius - 2,
           opacity: item.checked ? 0.6 : 1,
         },
@@ -70,7 +72,7 @@ export default function ShoppingListItemRow({ item, onToggle, onDelete, onUpdate
         </View>
       </Pressable>
 
-      {/* Name */}
+      {/* Name + optional promo tag */}
       <Pressable onPress={handleToggle} style={styles.label}>
         <Text
           style={[
@@ -84,9 +86,20 @@ export default function ShoppingListItemRow({ item, onToggle, onDelete, onUpdate
         >
           {item.name}
         </Text>
-        {item.isAuto && (
-          <Text style={[styles.autoTag, { color: colors.primary }]}>Auto</Text>
-        )}
+        <View style={styles.tagsRow}>
+          {item.isAuto && (
+            <Text style={[styles.autoTag, { color: colors.primary }]}>Auto</Text>
+          )}
+          {hasPromo && (
+            <View style={styles.promoTag}>
+              <Tag size={9} color="#16a34a" />
+              <Text style={styles.promoTxt}>
+                {item.storePromotion}
+                {item.promoPrice ? ` · ${item.promoPrice}` : ''}
+              </Text>
+            </View>
+          )}
+        </View>
       </Pressable>
 
       {/* Quantity stepper */}
@@ -153,9 +166,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  label: { flex: 1, gap: 2 },
+  label: { flex: 1, gap: 3 },
   name: { fontSize: 15, fontWeight: '500', fontFamily: 'Inter_500Medium' },
+  tagsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
   autoTag: { fontSize: 11, fontFamily: 'Inter_400Regular' },
+  promoTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  promoTxt: {
+    fontSize: 10,
+    color: '#16a34a',
+    fontFamily: 'Inter_600SemiBold',
+  },
   stepper: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   stepBtn: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
   qtyTxt: { fontSize: 13, fontFamily: 'Inter_500Medium', minWidth: 40, textAlign: 'center' },
