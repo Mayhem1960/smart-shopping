@@ -39,6 +39,11 @@ interface Props {
 
 const UNITS = ['unit', 'g', 'kg', 'ml', 'L', 'oz', 'lb', 'pack'];
 
+/** Capitalise the first letter of every word */
+function toTitleCase(str: string): string {
+  return str.replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
 async function pickImage(source: 'camera' | 'library'): Promise<string | null> {
   if (source === 'camera') {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -207,7 +212,7 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
           <TextInput
             style={inputStyle}
             value={name}
-            onChangeText={setName}
+            onChangeText={(t) => setName(toTitleCase(t))}
             placeholder="e.g. Whole Milk"
             placeholderTextColor={colors.mutedForeground}
             returnKeyType="next"
@@ -217,7 +222,7 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
           <TextInput
             style={inputStyle}
             value={brand}
-            onChangeText={setBrand}
+            onChangeText={(t) => setBrand(toTitleCase(t))}
             placeholder="e.g. Organic Valley"
             placeholderTextColor={colors.mutedForeground}
             returnKeyType="next"

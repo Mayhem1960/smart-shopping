@@ -10,9 +10,9 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#4ade80"
     },
     "ios": {
       "supportsTablet": false
@@ -20,8 +20,8 @@
     "android": {
       "package": "com.smartshopping.app",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#0D9488"
+        "foregroundImage": "./assets/images/adaptive-icon.png",
+        "backgroundColor": "#4ade80"
       },
       "permissions": [
         "android.permission.CAMERA",
