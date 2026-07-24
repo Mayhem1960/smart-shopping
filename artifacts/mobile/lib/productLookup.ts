@@ -31,172 +31,247 @@ function titleCase(s: string): string {
   return s.replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function isUsable(p: FoodProduct): boolean {
-  return !!(p.name && p.name.trim().length > 0);
+/** Score a result by how many useful fields it has (higher = more complete). */
+function score(p: FoodProduct): number {
+  return (
+    (p.name ? 3 : 0) +
+    (p.brand ? 2 : 0) +
+    (p.category ? 1 : 0) +
+    (p.imageUrl ? 1 : 0) +
+    (p.quantity ? 1 : 0)
+  );
+}
+
+function isUsable(p: FoodProduct | null): p is FoodProduct {
+  return !!(p && p.name && p.name.trim().length > 0);
+}
+
+/**
+ * Normalise barcodes so all lookups work on the canonical form.
+ * UPC-A (12 digits) → EAN-13 (prepend "0")
+ * EAN-13 starting with "0" → also try UPC-A (strip leading zero)
+ */
+function normaliseBarcodes(barcode: string): string[] {
+  const clean = barcode.replace(/\D/g, '');
+  const variants = new Set<string>([clean]);
+  if (clean.length === 12) {
+    variants.add('0' + clean); // UPC-A → EAN-13
+  }
+  if (clean.length === 13 && clean.startsWith('0')) {
+    variants.add(clean.slice(1)); // EAN-13 → UPC-A
+  }
+  return Array.from(variants);
 }
 
 // ---------------------------------------------------------------------------
-// Source 1 – Open Food Facts  (food & beverages)
+// Source 1 – Open Food Facts  (food & beverages — worldwide)
 // ---------------------------------------------------------------------------
 async function lookupOpenFoodFacts(barcode: string): Promise<FoodProduct | null> {
   try {
-    const res = await fetch(
-      `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(barcode)}.json`,
-      { headers: { 'User-Agent': 'SmartShoppingApp/1.0' } },
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.status !== 1 || !data.product) return null;
-    const p = data.product;
+    // Try both the canonical barcode AND converted form
+    const codes = normaliseBarcodes(barcode);
+    for (const code of codes) {
+      const res = await fetch(
+        `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}?fields=product_name,product_name_en,brands,categories_tags,image_front_url,image_front_small_url,image_url,selected_images,quantity`,
+        { headers: { 'User-Agent': 'SmartShoppingApp/1.0' } },
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.status !== 1 || !data.product) continue;
+      const p = data.product;
 
-    const rawImg: string =
-      p.image_front_url || p.image_front_small_url || p.image_url ||
-      p.selected_images?.front?.display?.en || p.selected_images?.front?.display?.fr || '';
+      const rawImg: string =
+        p.image_front_url || p.image_front_small_url || p.image_url ||
+        p.selected_images?.front?.display?.en || p.selected_images?.front?.display?.fr || '';
 
-    const imageUrl = rawImg ? httpsUrl(rawImg) : buildOffImageUrl(barcode);
+      const imageUrl = rawImg ? httpsUrl(rawImg) : buildOffImageUrl(code);
+      const name = p.product_name_en || p.product_name || '';
+      const brand = p.brands?.split(',')[0].trim() || '';
+      const category = p.categories_tags?.find((t: string) => t.startsWith('en:'))?.replace(/^en:/, '') || '';
 
-    const name = p.product_name_en || p.product_name || '';
-    const brand = p.brands?.split(',')[0].trim() || '';
-    const category = p.categories_tags?.[0]?.replace(/^en:/, '') || '';
-
-    if (!name) return null;
-    return { name: titleCase(name), brand: titleCase(brand), category, imageUrl };
+      if (!name) continue;
+      return { name: titleCase(name), brand: titleCase(brand), category, imageUrl, quantity: p.quantity };
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Source 2 – Open Beauty Facts  (cosmetics / personal care)
-// ---------------------------------------------------------------------------
-async function lookupOpenBeautyFacts(barcode: string): Promise<FoodProduct | null> {
-  try {
-    const res = await fetch(
-      `https://world.openbeautyfacts.org/api/v0/product/${encodeURIComponent(barcode)}.json`,
-      { headers: { 'User-Agent': 'SmartShoppingApp/1.0' } },
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.status !== 1 || !data.product) return null;
-    const p = data.product;
-
-    const rawImg = p.image_front_url || p.image_url || '';
-    const imageUrl = rawImg ? httpsUrl(rawImg) : undefined;
-
-    const name = p.product_name_en || p.product_name || '';
-    const brand = p.brands?.split(',')[0].trim() || '';
-    if (!name) return null;
-    return { name: titleCase(name), brand: titleCase(brand), category: 'Personal Care', imageUrl };
-  } catch {
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Source 3 – Open Products Facts  (non-food, non-beauty)
-// ---------------------------------------------------------------------------
-async function lookupOpenProductsFacts(barcode: string): Promise<FoodProduct | null> {
-  try {
-    const res = await fetch(
-      `https://world.openproductsfacts.org/api/v0/product/${encodeURIComponent(barcode)}.json`,
-      { headers: { 'User-Agent': 'SmartShoppingApp/1.0' } },
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.status !== 1 || !data.product) return null;
-    const p = data.product;
-
-    const rawImg = p.image_front_url || p.image_url || '';
-    const imageUrl = rawImg ? httpsUrl(rawImg) : undefined;
-
-    const name = p.product_name_en || p.product_name || '';
-    const brand = p.brands?.split(',')[0].trim() || '';
-    if (!name) return null;
-    return { name: titleCase(name), brand: titleCase(brand), imageUrl };
-  } catch {
-    return null;
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Source 4 – UPC Item DB  (general retail – free trial, no key needed)
+// Source 2 – UPC Item DB  (general retail — free trial, no key)
 // ---------------------------------------------------------------------------
 async function lookupUpcItemDb(barcode: string): Promise<FoodProduct | null> {
   try {
-    const res = await fetch(
-      `https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(barcode)}`,
-      { headers: { 'User-Agent': 'SmartShoppingApp/1.0', Accept: 'application/json' } },
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    if (data.code !== 'OK' || !data.items?.length) return null;
-    const item = data.items[0];
-
-    const name = item.title || '';
-    const brand = item.brand || '';
-    const imageUrl: string | undefined = item.images?.[0] || undefined;
-    const category = item.category || '';
-
-    if (!name) return null;
-    return {
-      name: titleCase(name),
-      brand: titleCase(brand),
-      category: titleCase(category),
-      imageUrl: imageUrl ? httpsUrl(imageUrl) : undefined,
-      quantity: item.size || undefined,
-    };
+    const codes = normaliseBarcodes(barcode);
+    for (const code of codes) {
+      const res = await fetch(
+        `https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`,
+        { headers: { 'User-Agent': 'SmartShoppingApp/1.0', Accept: 'application/json' } },
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.code !== 'OK' || !data.items?.length) continue;
+      const item = data.items[0];
+      const name = item.title || '';
+      if (!name) continue;
+      return {
+        name: titleCase(name),
+        brand: titleCase(item.brand || ''),
+        category: titleCase(item.category || ''),
+        imageUrl: item.images?.[0] ? httpsUrl(item.images[0]) : undefined,
+        quantity: item.size || undefined,
+      };
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Source 5 – Go-UPC  (free public endpoint, good North-American coverage)
+// Source 3 – Open Beauty Facts  (cosmetics / personal care)
 // ---------------------------------------------------------------------------
-async function lookupGoUpc(barcode: string): Promise<FoodProduct | null> {
+async function lookupOpenBeautyFacts(barcode: string): Promise<FoodProduct | null> {
   try {
-    const res = await fetch(
-      `https://go-upc.com/api/v1/code/${encodeURIComponent(barcode)}`,
-      { headers: { 'User-Agent': 'SmartShoppingApp/1.0', Accept: 'application/json' } },
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    const prod = data.product;
-    if (!prod?.name) return null;
-
-    return {
-      name: titleCase(prod.name),
-      brand: prod.brand ? titleCase(prod.brand) : undefined,
-      category: prod.category || undefined,
-      imageUrl: prod.imageUrl ? httpsUrl(prod.imageUrl) : undefined,
-    };
+    const codes = normaliseBarcodes(barcode);
+    for (const code of codes) {
+      const res = await fetch(
+        `https://world.openbeautyfacts.org/api/v0/product/${encodeURIComponent(code)}.json`,
+        { headers: { 'User-Agent': 'SmartShoppingApp/1.0' } },
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.status !== 1 || !data.product) continue;
+      const p = data.product;
+      const name = p.product_name_en || p.product_name || '';
+      if (!name) continue;
+      const rawImg = p.image_front_url || p.image_url || '';
+      return {
+        name: titleCase(name),
+        brand: titleCase(p.brands?.split(',')[0].trim() || ''),
+        category: 'Personal Care',
+        imageUrl: rawImg ? httpsUrl(rawImg) : undefined,
+      };
+    }
+    return null;
   } catch {
     return null;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Main export – tries sources in priority order, returns first usable result
+// Source 4 – Open Products Facts  (household / non-food / non-beauty)
+// ---------------------------------------------------------------------------
+async function lookupOpenProductsFacts(barcode: string): Promise<FoodProduct | null> {
+  try {
+    const codes = normaliseBarcodes(barcode);
+    for (const code of codes) {
+      const res = await fetch(
+        `https://world.openproductsfacts.org/api/v0/product/${encodeURIComponent(code)}.json`,
+        { headers: { 'User-Agent': 'SmartShoppingApp/1.0' } },
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.status !== 1 || !data.product) continue;
+      const p = data.product;
+      const name = p.product_name_en || p.product_name || '';
+      if (!name) continue;
+      const rawImg = p.image_front_url || p.image_url || '';
+      return {
+        name: titleCase(name),
+        brand: titleCase(p.brands?.split(',')[0].trim() || ''),
+        imageUrl: rawImg ? httpsUrl(rawImg) : undefined,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Source 5 – Datakick  (open crowd-sourced product database)
+// ---------------------------------------------------------------------------
+async function lookupDatakick(barcode: string): Promise<FoodProduct | null> {
+  try {
+    const codes = normaliseBarcodes(barcode);
+    for (const code of codes) {
+      const res = await fetch(
+        `https://www.datakick.org/api/items/${encodeURIComponent(code)}`,
+        { headers: { 'User-Agent': 'SmartShoppingApp/1.0', Accept: 'application/json' } },
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      const name = data.name || '';
+      if (!name) continue;
+      return {
+        name: titleCase(name),
+        brand: data.brand_name ? titleCase(data.brand_name) : undefined,
+        imageUrl: data.images?.[0]?.url ? httpsUrl(data.images[0].url) : undefined,
+        quantity: data.size ? `${data.size}${data.unit || ''}` : undefined,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Source 6 – Open Food Facts US (direct subdomain — better NA coverage)
+// ---------------------------------------------------------------------------
+async function lookupOpenFoodFactsUS(barcode: string): Promise<FoodProduct | null> {
+  try {
+    const codes = normaliseBarcodes(barcode);
+    for (const code of codes) {
+      const res = await fetch(
+        `https://us.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`,
+        { headers: { 'User-Agent': 'SmartShoppingApp/1.0' } },
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      if (data.status !== 1 || !data.product) continue;
+      const p = data.product;
+      const name = p.product_name_en || p.product_name || '';
+      if (!name) continue;
+      const rawImg = p.image_front_url || p.image_front_small_url || p.image_url || '';
+      return {
+        name: titleCase(name),
+        brand: titleCase(p.brands?.split(',')[0].trim() || ''),
+        category: p.categories_tags?.[0]?.replace(/^en:/, '') || undefined,
+        imageUrl: rawImg ? httpsUrl(rawImg) : buildOffImageUrl(code),
+        quantity: p.quantity || undefined,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main export
+// Runs ALL sources in parallel, then returns the result with the highest
+// completeness score (most fields filled) rather than just the first hit.
 // ---------------------------------------------------------------------------
 export async function lookupBarcode(barcode: string): Promise<FoodProduct | null> {
-  // Run the two most-coverage sources concurrently first
-  const [off, upcdb] = await Promise.all([
+  const results = await Promise.allSettled([
     lookupOpenFoodFacts(barcode),
     lookupUpcItemDb(barcode),
+    lookupOpenFoodFactsUS(barcode),
+    lookupOpenBeautyFacts(barcode),
+    lookupOpenProductsFacts(barcode),
+    lookupDatakick(barcode),
   ]);
 
-  if (off && isUsable(off)) return off;
-  if (upcdb && isUsable(upcdb)) return upcdb;
+  const usable = results
+    .filter((r): r is PromiseFulfilledResult<FoodProduct | null> => r.status === 'fulfilled')
+    .map((r) => r.value)
+    .filter(isUsable);
 
-  // Fallback chain — beauty, products, go-upc
-  const beauty = await lookupOpenBeautyFacts(barcode);
-  if (beauty && isUsable(beauty)) return beauty;
+  if (usable.length === 0) return null;
 
-  const products = await lookupOpenProductsFacts(barcode);
-  if (products && isUsable(products)) return products;
-
-  const goUpc = await lookupGoUpc(barcode);
-  if (goUpc && isUsable(goUpc)) return goUpc;
-
-  return null;
+  // Return the most complete result
+  return usable.reduce((best, current) => (score(current) > score(best) ? current : best));
 }

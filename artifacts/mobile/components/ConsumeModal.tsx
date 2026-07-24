@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -30,18 +30,31 @@ export default function ConsumeModal({ visible, product, onConsume, onRestock, o
   const [qty, setQty] = useState('1');
   const [mode, setMode] = useState<'consume' | 'restock'>('consume');
 
+  // Reset qty and mode whenever the modal opens for a different product
+  useEffect(() => {
+    if (visible) {
+      setQty('1');
+      setMode('consume');
+    }
+  }, [visible, product?.id]);
+
   const parsed = parseFloat(qty) || 0;
 
-  const handleConsume = () => {
-    if (!product || parsed <= 0) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onConsume(product.id, parsed);
-  };
+  // Live preview of the new stock level after the action
+  const currentQty = product?.currentQuantity ?? 0;
+  const newQty =
+    mode === 'consume'
+      ? Math.max(0, currentQty - parsed)
+      : currentQty + parsed;
 
-  const handleRestock = () => {
+  const handleAction = () => {
     if (!product || parsed <= 0) return;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    onRestock(product.id, parsed);
+    if (mode === 'consume') {
+      onConsume(product.id, parsed);
+    } else {
+      onRestock(product.id, parsed);
+    }
   };
 
   const adjust = (delta: number) => {
@@ -53,27 +66,51 @@ export default function ConsumeModal({ visible, product, onConsume, onRestock, o
 
   if (!product) return null;
 
+  const arrowColor = mode === 'consume' ? colors.critical : colors.ok;
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onCancel}>
       <KeyboardAvoidingView
         style={[styles.container, { backgroundColor: colors.background }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
+        {/* Header */}
         <View style={[styles.header, { borderBottomColor: colors.border, paddingTop: insets.top + 8 }]}>
           <Pressable onPress={onCancel} hitSlop={8}>
             <Feather name="x" size={22} color={colors.mutedForeground} />
           </Pressable>
-          <Text style={[styles.title, { color: colors.foreground }]}>{product.name}</Text>
+          <Text style={[styles.title, { color: colors.foreground }]} numberOfLines={1}>
+            {product.name}
+          </Text>
           <View style={{ width: 22 }} />
         </View>
 
         <View style={styles.body}>
-          {/* Stock display */}
+          {/* Stock display — shows current → new live */}
           <View style={[styles.stockBox, { backgroundColor: colors.muted, borderRadius: colors.radius }]}>
-            <Text style={[styles.stockLabel, { color: colors.mutedForeground }]}>Current stock</Text>
-            <Text style={[styles.stockValue, { color: colors.foreground }]}>
-              {product.currentQuantity} <Text style={{ fontSize: 18, fontWeight: '400' }}>{product.unit}</Text>
+            <Text style={[styles.stockLabel, { color: colors.mutedForeground }]}>
+              Current stock
             </Text>
+            <View style={styles.stockRow}>
+              <Text style={[styles.stockValue, { color: colors.foreground }]}>
+                {currentQty}
+                <Text style={{ fontSize: 18, fontWeight: '400' }}> {product.unit}</Text>
+              </Text>
+              {parsed > 0 && (
+                <>
+                  <Feather
+                    name={mode === 'consume' ? 'arrow-right' : 'arrow-right'}
+                    size={18}
+                    color={arrowColor}
+                    style={{ marginHorizontal: 8, marginTop: 6 }}
+                  />
+                  <Text style={[styles.stockValue, { color: arrowColor }]}>
+                    {newQty % 1 === 0 ? newQty : newQty.toFixed(1)}
+                    <Text style={{ fontSize: 18, fontWeight: '400', color: arrowColor }}> {product.unit}</Text>
+                  </Text>
+                </>
+              )}
+            </View>
           </View>
 
           {/* Mode toggle */}
@@ -127,16 +164,24 @@ export default function ConsumeModal({ visible, product, onConsume, onRestock, o
               <TouchableOpacity
                 key={v}
                 onPress={() => setQty(String(v))}
-                style={[styles.quickChip, { backgroundColor: colors.secondary, borderRadius: 20 }]}
+                style={[
+                  styles.quickChip,
+                  {
+                    backgroundColor: parseFloat(qty) === v ? colors.primary : colors.secondary,
+                    borderRadius: 20,
+                  },
+                ]}
               >
-                <Text style={[styles.quickTxt, { color: colors.secondaryForeground }]}>{v}</Text>
+                <Text style={[styles.quickTxt, { color: parseFloat(qty) === v ? colors.primaryForeground : colors.secondaryForeground }]}>
+                  {v}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
 
           {/* Action button */}
           <TouchableOpacity
-            onPress={mode === 'consume' ? handleConsume : handleRestock}
+            onPress={handleAction}
             style={[
               styles.actionBtn,
               {
@@ -189,13 +234,20 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
     paddingVertical: 16,
-    gap: 4,
+    paddingHorizontal: 12,
+    gap: 6,
   },
   stockLabel: {
     fontSize: 12,
     fontFamily: 'Inter_400Regular',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+  stockRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   stockValue: {
     fontSize: 36,

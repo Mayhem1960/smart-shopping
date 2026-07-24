@@ -39,8 +39,7 @@ async function pickProductImage(source: 'camera' | 'library'): Promise<string | 
     }
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
+      allowsEditing: false,
       quality: 0.7,
     });
     return result.canceled ? null : result.assets[0].uri;
@@ -52,8 +51,7 @@ async function pickProductImage(source: 'camera' | 'library'): Promise<string | 
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
+      allowsEditing: false,
       quality: 0.7,
     });
     return result.canceled ? null : result.assets[0].uri;
@@ -65,7 +63,7 @@ export default function ProductDetailScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { getProduct, updateProduct, deleteProduct, logConsumption, logRestock } = useShopping();
+  const { products, updateProduct, deleteProduct, logConsumption, logRestock } = useShopping();
 
   const scrollRef = useRef<ScrollView>(null);
 
@@ -75,7 +73,9 @@ export default function ProductDetailScreen() {
   const [editCategory, setEditCategory] = useState(false);
   const [categoryVal, setCategoryVal] = useState('');
 
-  const product = getProduct(id);
+  // Derive product from reactive products array so the screen re-renders immediately
+  // after logConsumption / logRestock updates the context state.
+  const product = products.find((p) => p.id === id);
 
   if (!product) {
     return (
