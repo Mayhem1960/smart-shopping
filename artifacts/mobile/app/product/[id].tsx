@@ -109,7 +109,7 @@ export default function ProductDetailScreen() {
 
   const handleSaveThreshold = () => {
     const val = parseFloat(thresholdVal);
-    if (val > 0) updateProduct(product.id, { minThreshold: val });
+    if (!isNaN(val) && val >= 0) updateProduct(product.id, { minThreshold: val });
     setEditThreshold(false);
   };
 
