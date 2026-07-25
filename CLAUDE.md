@@ -93,6 +93,22 @@ Expo config: `artifacts/mobile/app.json` (owner `mayhem1960`, slug `mobile`,
 Android package `com.smartshopping.app`). The root `app.json` is an empty
 Replit stub — ignore it, and don't edit it expecting an effect.
 
+### One-command routine (`build-apk.ps1`)
+
+`build-apk.ps1` (repo root, Windows PowerShell) wraps the whole flow: it fixes the
+PATH (adds Git's `bin` so the `sh` preinstall hook works), runs `pnpm install`,
+typechecks the shippable packages as a **gate**, then triggers the EAS APK build.
+It reads the Expo token from `EXPO_TOKEN` (or `-Token`) — never hardcode it.
+
+```powershell
+.\build-apk.ps1 -SkipBuild                       # debug only: install + typecheck
+$env:EXPO_TOKEN = "<token>"; .\build-apk.ps1      # debug, then queue an APK (no-wait)
+.\build-apk.ps1 -Token "<token>" -Wait            # ... and wait for the download URL
+```
+
+Create/revoke tokens at https://expo.dev/accounts/mayhem1960/settings/access-tokens.
+`mockup-sandbox` is skipped by the gate (non-shipped; see Gotchas).
+
 ## Gotchas
 
 - **pnpm only.** npm and yarn are blocked by the root preinstall script.
