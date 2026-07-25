@@ -99,6 +99,7 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
 
   const handleSave = () => {
     if (!name.trim()) return;
+    const parsedThreshold = parseFloat(minThreshold);
     onConfirm({
       barcode: initialData.barcode ?? '',
       name: name.trim(),
@@ -107,7 +108,8 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
       imageUri,
       unit,
       currentQuantity: parseFloat(currentQty) || 1,
-      minThreshold: parseFloat(minThreshold) || 1,
+      // Allow 0 ("never auto-restock"); only fall back to 1 for blank/invalid input.
+      minThreshold: Number.isNaN(parsedThreshold) ? 1 : parsedThreshold,
     });
   };
 
