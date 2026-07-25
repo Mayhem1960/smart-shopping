@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   FlatList,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -33,6 +34,21 @@ export default function ListScreen() {
   const [addUnit, setAddUnit] = useState('unit');
   const [addExpanded, setAddExpanded] = useState(false);
   const [showConsent, setShowConsent] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  // Lift the add-item card above the on-screen keyboard. On Android with
+  // edge-to-edge the window doesn't resize, so an absolutely-positioned bar
+  // stays hidden behind the keyboard unless we offset it ourselves.
+  useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const showSub = Keyboard.addListener(showEvt, (e) => setKeyboardHeight(e.endCoordinates.height));
+    const hideSub = Keyboard.addListener(hideEvt, () => setKeyboardHeight(0));
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const isWeb = Platform.OS === 'web';
   const topPad = isWeb ? insets.top + 67 : 0;
@@ -272,7 +288,7 @@ export default function ListScreen() {
             backgroundColor: colors.card,
             borderColor: colors.border,
             borderRadius: colors.radius,
-            bottom: insets.bottom + 80 + bottomPad,
+            bottom: keyboardHeight > 0 ? keyboardHeight + 12 : insets.bottom + 80 + bottomPad,
             shadowColor: '#000',
           },
         ]}

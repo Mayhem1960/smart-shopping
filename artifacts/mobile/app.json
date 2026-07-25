@@ -2,7 +2,7 @@
   "expo": {
     "name": "Smart Shopping",
     "slug": "mobile",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "owner": "mayhem1960",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -19,7 +19,7 @@
     },
     "android": {
       "package": "com.smartshopping.app",
-      "versionCode": 2,
+      "versionCode": 3,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#4ade80"

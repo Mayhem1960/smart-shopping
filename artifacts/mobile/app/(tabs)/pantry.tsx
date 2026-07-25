@@ -176,14 +176,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingVertical: 6,
     gap: 8,
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
     fontFamily: 'Inter_400Regular',
-    height: 22,
+    // No tight fixed height: height 22 clipped the typed text on Android.
+    height: 40,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
   },
   filterRow: {
     flexDirection: 'row',
