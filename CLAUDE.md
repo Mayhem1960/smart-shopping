@@ -107,7 +107,7 @@ $env:EXPO_TOKEN = "<token>"; .\build-apk.ps1      # debug, then queue an APK (no
 ```
 
 Create/revoke tokens at https://expo.dev/accounts/mayhem1960/settings/access-tokens.
-`mockup-sandbox` is skipped by the gate (non-shipped; see Gotchas).
+The gate typechecks all shippable packages (mobile, libs, api-server, mockup-sandbox, scripts).
 
 ## Gotchas
 

@@ -110,10 +110,9 @@ $targets = @(
     @{ Name = "libs (tsc --build)";      Args = @("--build") },
     @{ Name = "artifacts/mobile";        Args = @("-p","artifacts/mobile/tsconfig.json","--noEmit") },
     @{ Name = "artifacts/api-server";    Args = @("-p","artifacts/api-server/tsconfig.json","--noEmit") },
+    @{ Name = "artifacts/mockup-sandbox"; Args = @("-p","artifacts/mockup-sandbox/tsconfig.json","--noEmit") },
     @{ Name = "scripts";                 Args = @("-p","scripts/tsconfig.json","--noEmit") }
 )
-# NOTE: artifacts/mockup-sandbox is intentionally skipped (non-shipped scratch space
-#       with pre-existing React 19 @types/react duplication errors).
 
 $failed = @()
 foreach ($t in $targets) {

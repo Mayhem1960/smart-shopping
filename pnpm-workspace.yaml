@@ -47,8 +47,11 @@ catalog:
   '@tailwindcss/vite': ^4.1.14
   '@tanstack/react-query': ^5.90.21
   '@types/node': ^25.3.3
-  '@types/react': ^19.2.0
-  '@types/react-dom': ^19.2.0
+  # Kept on the 19.1.x line to match react@19.1.0 (and the mobile app's ~19.1.10),
+  # so the whole workspace resolves a single @types/react. A 19.2.x here pulled in
+  # a second copy and broke mockup-sandbox typecheck ("two unrelated Ref types").
+  '@types/react': ~19.1.10
+  '@types/react-dom': ~19.1.7
   '@vitejs/plugin-react': ^5.0.4
   class-variance-authority: ^0.7.1
   clsx: ^2.1.1
