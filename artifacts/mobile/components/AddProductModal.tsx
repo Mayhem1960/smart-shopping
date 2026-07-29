@@ -102,8 +102,8 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
     const parsedThreshold = parseFloat(minThreshold);
     onConfirm({
       barcode: initialData.barcode ?? '',
-      name: name.trim(),
-      brand: brand.trim(),
+      name: toTitleCase(name.trim()),
+      brand: toTitleCase(brand.trim()),
       category: category.trim(),
       imageUri,
       unit,
@@ -214,7 +214,8 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
           <TextInput
             style={inputStyle}
             value={name}
-            onChangeText={(t) => setName(toTitleCase(t))}
+            onChangeText={setName}
+            autoCapitalize="words"
             placeholder="e.g. Whole Milk"
             placeholderTextColor={colors.mutedForeground}
             returnKeyType="next"
@@ -224,7 +225,8 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
           <TextInput
             style={inputStyle}
             value={brand}
-            onChangeText={(t) => setBrand(toTitleCase(t))}
+            onChangeText={setBrand}
+            autoCapitalize="words"
             placeholder="e.g. Organic Valley"
             placeholderTextColor={colors.mutedForeground}
             returnKeyType="next"
