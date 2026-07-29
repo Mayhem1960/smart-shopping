@@ -61,6 +61,10 @@ $ErrorActionPreference = "Stop"
 $RepoRoot = $PSScriptRoot
 Set-Location $RepoRoot
 
+# eas-cli prints an "update available" notice to stderr; under ErrorActionPreference
+# "Stop" that stderr is treated as a terminating error and aborts the build step.
+$env:NO_UPDATE_NOTIFIER = "1"
+
 function Info($m){ Write-Host "==> $m" -ForegroundColor Cyan }
 function Ok($m){   Write-Host "OK  $m"  -ForegroundColor Green }
 function Die($m){  Write-Host "ERR $m"  -ForegroundColor Red; exit 1 }
@@ -150,8 +154,12 @@ $buildArgs = @("build","--platform",$Platform,"--profile",$Profile,"--non-intera
 if (-not $Wait) { $buildArgs += "--no-wait" }
 
 Info ("eas " + ($buildArgs -join " "))
-eas @buildArgs
+# eas writes progress to stderr; don't let it terminate under -ErrorActionPreference Stop.
+$prevEAP = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+eas @buildArgs 2>&1 | Write-Host
 $code = $LASTEXITCODE
+$ErrorActionPreference = $prevEAP
 Set-Location $RepoRoot
 if ($code -ne 0) { Die "eas build failed (exit $code)." }
 
