@@ -1,5 +1,6 @@
 import React from 'react';
 import { Platform, StyleSheet, useColorScheme, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
 import { BlurView } from 'expo-blur';
 import { isLiquidGlassAvailable } from 'expo-glass-effect';
@@ -34,9 +35,13 @@ function NativeTabLayout() {
 function ClassicTabLayout() {
   const colors = useColors();
   const colorScheme = useColorScheme();
+  const insets = useSafeAreaInsets();
   const isDark = colorScheme === 'dark';
   const isIOS = Platform.OS === 'ios';
   const isWeb = Platform.OS === 'web';
+  // Reserve space for the system navigation bar / home indicator so the tab
+  // buttons sit above it (edge-to-edge draws the app under the system bars).
+  const tabBarInset = isWeb ? 0 : insets.bottom;
 
   return (
     <Tabs
@@ -53,7 +58,8 @@ function ClassicTabLayout() {
           borderTopWidth: isWeb ? 1 : StyleSheet.hairlineWidth,
           borderTopColor: colors.border,
           elevation: 0,
-          height: isWeb ? 84 : 60,
+          height: (isWeb ? 84 : 60) + tabBarInset,
+          paddingBottom: tabBarInset,
         },
         tabBarBackground: () =>
           isIOS ? (
