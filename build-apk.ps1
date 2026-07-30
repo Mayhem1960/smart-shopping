@@ -144,23 +144,32 @@ if ([string]::IsNullOrWhiteSpace($Token)) {
 }
 
 $env:EXPO_TOKEN = $Token
+
+# Run eas-cli with non-terminating errors: it prints an update banner and progress
+# to stderr, which PowerShell 5.1 turns into a terminating error under
+# -ErrorActionPreference Stop. We drive success off $LASTEXITCODE instead.
+$ErrorActionPreference = "Continue"
+
 Info "Authenticating with Expo"
-$who = eas whoami 2>&1
-if ($LASTEXITCODE -ne 0) { Die "eas whoami failed: $who" }
-Ok "Authenticated: $who"
+$who = (eas whoami 2>&1 | Out-String).Trim()
+if ($LASTEXITCODE -ne 0) {
+    $ErrorActionPreference = "Stop"
+    if ($who -match "revoked|Unauthorized|not logged in|bearer token") {
+        Die "Expo token is invalid or revoked. Create a fresh one at https://expo.dev/accounts/mayhem1960/settings/access-tokens"
+    }
+    Die "eas whoami failed: $who"
+}
+Ok ("Authenticated: " + ($who -replace '.*?(\b[\w.-]+@[\w.-]+).*','$1'))
 
 Set-Location (Join-Path $RepoRoot "artifacts\mobile")
 $buildArgs = @("build","--platform",$Platform,"--profile",$Profile,"--non-interactive")
 if (-not $Wait) { $buildArgs += "--no-wait" }
 
 Info ("eas " + ($buildArgs -join " "))
-# eas writes progress to stderr; don't let it terminate under -ErrorActionPreference Stop.
-$prevEAP = $ErrorActionPreference
-$ErrorActionPreference = "Continue"
 eas @buildArgs 2>&1 | Write-Host
 $code = $LASTEXITCODE
-$ErrorActionPreference = $prevEAP
 Set-Location $RepoRoot
+$ErrorActionPreference = "Stop"
 if ($code -ne 0) { Die "eas build failed (exit $code)." }
 
 Ok "Build submitted. Track it at https://expo.dev/accounts/mayhem1960/projects/mobile/builds"
