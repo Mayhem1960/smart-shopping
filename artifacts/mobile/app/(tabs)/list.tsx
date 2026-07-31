@@ -265,7 +265,7 @@ export default function ListScreen() {
             />
           );
         }}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 180 + bottomPad }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 180 + bottomPad + keyboardHeight }}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           shoppingList.length === 0 ? (
@@ -282,13 +282,18 @@ export default function ListScreen() {
 
       {/* Add item card */}
       <View
+        pointerEvents={keyboardHeight > 0 && !addExpanded ? 'none' : 'auto'}
         style={[
           styles.addCard,
           {
             backgroundColor: colors.card,
             borderColor: colors.border,
             borderRadius: colors.radius,
-            bottom: keyboardHeight > 0 ? keyboardHeight + 12 : insets.bottom + 80 + bottomPad,
+            // Only lift the add bar above the keyboard while adding a new item.
+            bottom: addExpanded && keyboardHeight > 0 ? keyboardHeight + 12 : insets.bottom + 80 + bottomPad,
+            // Hide it while an existing item is being edited (keyboard open, not
+            // adding) so the raised bar can't mask the row being edited.
+            opacity: keyboardHeight > 0 && !addExpanded ? 0 : 1,
             shadowColor: '#000',
           },
         ]}
