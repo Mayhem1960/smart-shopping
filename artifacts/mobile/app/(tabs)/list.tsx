@@ -511,9 +511,11 @@ const styles = StyleSheet.create({
     height: 40,
     borderWidth: 1,
     paddingHorizontal: 10,
+    paddingVertical: 0,
     fontSize: 15,
     width: 64,
     fontFamily: 'Inter_400Regular',
+    textAlignVertical: 'center',
   },
   addUnitInput: {
     height: 40,
