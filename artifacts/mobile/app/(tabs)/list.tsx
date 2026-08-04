@@ -25,7 +25,7 @@ import { Platform } from 'react-native';
 export default function ListScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  const { shoppingList, addShoppingItem, updateShoppingItem, removeShoppingItem, toggleShoppingItem, clearCheckedItems, syncAutoItems } =
+  const { shoppingList, addShoppingItem, updateShoppingItem, removeShoppingItem, toggleShoppingItem, addSuggestionToList, clearCheckedItems, syncAutoItems } =
     useShopping();
   const { settings, isLoading: promoLoading, enablePromotions, disablePromotions, refreshDeals, getDeal } = usePromotions();
 
@@ -72,6 +72,20 @@ export default function ListScreen() {
   const annotatedManual = annotatedList.filter((i) => !i.isAuto && !i.checked);
   const annotatedChecked = annotatedList.filter((i) => i.checked);
 
+  // Deals are only fetched for items actually on the shopping list — both My List
+  // (manual) and Smart Suggestions (auto) — excluding already-purchased items.
+  const dealItemNames = shoppingList.filter((i) => !i.checked).map((i) => i.name);
+  const dealsKey = dealItemNames.join('|');
+
+  // Keep deals in sync with the current list whenever it changes.
+  useEffect(() => {
+    if (settings.enabled && settings.locationInfo && dealItemNames.length > 0) {
+      refreshDeals(dealItemNames);
+    }
+    // Only re-run when the active item set or the enabled flag changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dealsKey, settings.enabled]);
+
   const handleAdd = () => {
     if (!addName.trim()) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -96,16 +110,14 @@ export default function ListScreen() {
     setShowConsent(false);
     enablePromotions().then(() => {
       // Refresh deals for current list items after location is resolved
-      const names = shoppingList.map((i) => i.name);
-      if (names.length > 0) refreshDeals(names);
+      if (dealItemNames.length > 0) refreshDeals(dealItemNames);
     });
   };
 
   const handleRefreshDeals = () => {
-    const names = shoppingList.map((i) => i.name);
-    if (names.length === 0) return;
+    if (dealItemNames.length === 0) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    refreshDeals(names);
+    refreshDeals(dealItemNames);
   };
 
   const handleDisablePromotions = () => {
@@ -121,7 +133,7 @@ export default function ListScreen() {
 
   type Section =
     | { type: 'header'; title: string; action?: { label: string; onPress: () => void } }
-    | { type: 'item'; item: ShoppingItem }
+    | { type: 'item'; item: ShoppingItem; isSuggestion?: boolean }
     | { type: 'empty'; message: string }
     | { type: 'promo-banner' }
     | { type: 'promo-active' };
@@ -140,7 +152,7 @@ export default function ListScreen() {
     if (annotatedAuto.length === 0) {
       sections.push({ type: 'empty', message: 'No smart suggestions right now' });
     } else {
-      annotatedAuto.forEach((item) => sections.push({ type: 'item', item }));
+      annotatedAuto.forEach((item) => sections.push({ type: 'item', item, isSuggestion: true }));
     }
   }
 
@@ -259,7 +271,10 @@ export default function ListScreen() {
           return (
             <ShoppingListItemRow
               item={s.item}
-              onToggle={() => toggleShoppingItem(s.item.id)}
+              isSuggestion={s.isSuggestion}
+              onToggle={() =>
+                s.isSuggestion ? addSuggestionToList(s.item.id) : toggleShoppingItem(s.item.id)
+              }
               onDelete={() => removeShoppingItem(s.item.id)}
               onUpdateQuantity={(qty) => updateShoppingItem(s.item.id, { quantity: qty })}
             />

@@ -10,9 +10,12 @@ interface Props {
   onToggle: () => void;
   onDelete: () => void;
   onUpdateQuantity?: (newQty: number) => void;
+  /** Render as a Smart Suggestion: the leading control adds the item to My List
+   *  (via onToggle) instead of marking it purchased. */
+  isSuggestion?: boolean;
 }
 
-export default function ShoppingListItemRow({ item, onToggle, onDelete, onUpdateQuantity }: Props) {
+export default function ShoppingListItemRow({ item, onToggle, onDelete, onUpdateQuantity, isSuggestion }: Props) {
   const colors = useColors();
   const [editing, setEditing] = useState(false);
   const [qtyText, setQtyText] = useState(String(item.quantity));
@@ -57,18 +60,22 @@ export default function ShoppingListItemRow({ item, onToggle, onDelete, onUpdate
         },
       ]}
     >
-      {/* Checkbox */}
+      {/* Leading control: '+' to add a suggestion to My List, else a purchase checkbox */}
       <Pressable onPress={handleToggle} style={styles.checkBtn} hitSlop={8}>
         <View
           style={[
             styles.checkbox,
             {
-              borderColor: item.checked ? colors.primary : colors.border,
-              backgroundColor: item.checked ? colors.primary : 'transparent',
+              borderColor: isSuggestion || item.checked ? colors.primary : colors.border,
+              backgroundColor: item.checked && !isSuggestion ? colors.primary : 'transparent',
             },
           ]}
         >
-          {item.checked && <Check size={12} color={colors.primaryForeground} />}
+          {isSuggestion ? (
+            <Plus size={13} color={colors.primary} />
+          ) : (
+            item.checked && <Check size={12} color={colors.primaryForeground} />
+          )}
         </View>
       </Pressable>
 

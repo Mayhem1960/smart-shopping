@@ -26,6 +26,8 @@ interface ShoppingContextType {
   updateShoppingItem: (id: string, updates: Partial<Pick<ShoppingItem, 'quantity' | 'unit' | 'name'>>) => void;
   removeShoppingItem: (id: string) => void;
   toggleShoppingItem: (id: string) => void;
+  /** Promote a Smart Suggestion (auto item) into My List as an active, purchasable item */
+  addSuggestionToList: (id: string) => void;
   clearCheckedItems: () => void;
   syncAutoItems: () => void;
   reloadData: () => Promise<void>;
@@ -130,7 +132,9 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
         // Sync shopping list immediately after stock changes
         setAndSaveList((list) => {
           const existingAutoIds = new Set(
-            list.filter((i) => i.isAuto && i.productId).map((i) => i.productId!),
+            // Dedupe against ALL items referencing a product (auto or promoted/manual)
+        // so a suggestion the user added to My List isn't re-suggested as a duplicate.
+        list.filter((i) => i.productId).map((i) => i.productId!),
           );
           const newItems: ShoppingItem[] = [];
           for (const product of updated) {
@@ -179,7 +183,9 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
         // Remove auto item if restocked above threshold; re-sync anything still low
         setAndSaveList((list) => {
           const existingAutoIds = new Set(
-            list.filter((i) => i.isAuto && i.productId).map((i) => i.productId!),
+            // Dedupe against ALL items referencing a product (auto or promoted/manual)
+        // so a suggestion the user added to My List isn't re-suggested as a duplicate.
+        list.filter((i) => i.productId).map((i) => i.productId!),
           );
           const newItems: ShoppingItem[] = [];
           for (const product of updated) {
@@ -235,6 +241,17 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
     [setAndSaveList],
   );
 
+  const addSuggestionToList = useCallback(
+    (id: string) => {
+      // Convert an auto suggestion into a confirmed My List item: keep it active
+      // (unchecked) and drop the auto flag so it reads as a normal, purchasable item.
+      setAndSaveList((prev) =>
+        prev.map((i) => (i.id === id ? { ...i, isAuto: false, checked: false } : i)),
+      );
+    },
+    [setAndSaveList],
+  );
+
   const clearCheckedItems = useCallback(() => {
     setAndSaveList((prev) => prev.filter((i) => !i.checked));
   }, [setAndSaveList]);
@@ -243,7 +260,9 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
     setAndSaveProducts((prev) => {
       setAndSaveList((list) => {
         const existingAutoProductIds = new Set(
-          list.filter((i) => i.isAuto && i.productId).map((i) => i.productId!),
+          // Dedupe against ALL items referencing a product (auto or promoted/manual)
+        // so a suggestion the user added to My List isn't re-suggested as a duplicate.
+        list.filter((i) => i.productId).map((i) => i.productId!),
         );
         const newItems: ShoppingItem[] = [];
         for (const product of prev) {
@@ -304,6 +323,7 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
         addShoppingItem,
         removeShoppingItem,
         toggleShoppingItem,
+        addSuggestionToList,
         clearCheckedItems,
         syncAutoItems,
         updateShoppingItem,

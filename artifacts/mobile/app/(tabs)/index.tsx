@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -7,7 +7,7 @@ import { useShopping } from '@/context/ShoppingContext';
 import ProductCard from '@/components/ProductCard';
 import EmptyState from '@/components/EmptyState';
 import { getDaysUntilEmpty, getStockStatus, needsRestock } from '@/lib/predictions';
-import { Camera, Package, AlertTriangle, ShoppingCart, ShoppingBag, ArrowLeftRight, type LucideIcon } from 'lucide-react-native';
+import { Camera, Package, AlertTriangle, ShoppingCart, ShoppingBag, ArrowLeftRight, Search, X, type LucideIcon } from 'lucide-react-native';
 import { Platform } from 'react-native';
 
 export default function HomeScreen() {
@@ -15,6 +15,14 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { products, shoppingList, syncAutoItems, isLoaded } = useShopping();
+
+  const [search, setSearch] = useState('');
+  const q = search.trim().toLowerCase();
+  const searchResults = q
+    ? products.filter((p) =>
+        [p.name, p.brand, p.category].some((f) => f?.toLowerCase().includes(q)),
+      )
+    : [];
 
   useEffect(() => {
     if (isLoaded) syncAutoItems();
@@ -60,6 +68,42 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       </View>
+
+      {/* Search */}
+      <View style={[styles.searchRow, { backgroundColor: colors.muted, borderRadius: colors.radius }]}>
+        <Search size={16} color={colors.mutedForeground} />
+        <TextInput
+          style={[styles.searchInput, { color: colors.foreground }]}
+          placeholder="Search products..."
+          placeholderTextColor={colors.mutedForeground}
+          value={search}
+          onChangeText={setSearch}
+          returnKeyType="search"
+        />
+        {search.length > 0 && (
+          <Pressable onPress={() => setSearch('')} hitSlop={8}>
+            <X size={16} color={colors.mutedForeground} />
+          </Pressable>
+        )}
+      </View>
+
+      {q ? (
+        <View style={styles.section}>
+          <View style={styles.sectionHeaderRow}>
+            <View style={[styles.sectionDot, { backgroundColor: colors.primary }]} />
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Search Results</Text>
+            <Text style={[styles.sectionCount, { color: colors.mutedForeground }]}>{searchResults.length}</Text>
+          </View>
+          {searchResults.length > 0 ? (
+            searchResults.map((p) => (
+              <ProductCard key={p.id} product={p} onPress={() => router.push(`/product/${p.id}`)} />
+            ))
+          ) : (
+            <Text style={[styles.noResults, { color: colors.mutedForeground }]}>No products found for "{search.trim()}".</Text>
+          )}
+        </View>
+      ) : (
+        <>
 
       {/* Stats row */}
       <View style={styles.statsRow}>
@@ -129,7 +173,7 @@ export default function HomeScreen() {
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <View style={[styles.sectionDot, { backgroundColor: colors.primary }]} />
-            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Shopping List</Text>
+            <Text style={[styles.sectionTitle, { color: colors.foreground }]}>My List</Text>
             <Pressable onPress={() => router.push('/(tabs)/list')} hitSlop={8}>
               <Text style={[styles.seeMoreTxt, { color: colors.primary }]}>View all</Text>
             </Pressable>
@@ -179,6 +223,8 @@ export default function HomeScreen() {
           </Pressable>
         </View>
       )}
+        </>
+      )}
     </ScrollView>
   );
 }
@@ -224,6 +270,30 @@ function StatCard({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginHorizontal: 16,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    fontFamily: 'Inter_400Regular',
+    height: 40,
+    paddingVertical: 0,
+    textAlignVertical: 'center',
+  },
+  noResults: {
+    fontSize: 14,
+    fontFamily: 'Inter_400Regular',
+    paddingHorizontal: 16,
+    paddingVertical: 20,
+    textAlign: 'center',
+  },
   header: { paddingHorizontal: 20, marginBottom: 20 },
   headerTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   greeting: { fontSize: 14, fontFamily: 'Inter_400Regular', marginBottom: 2 },
