@@ -50,7 +50,7 @@ export function getNextBuyDate(product: Product): Date | null {
 
 export function formatDaysLeft(days: number | null): string {
   if (days === null) return 'Unknown';
-  if (days <= 0) return 'Out of stock';
+  if (days <= 0) return 'Out of Stock';
   if (days < 1) return 'Less than a day';
   if (days < 2) return '1 day left';
   return `${Math.floor(days)} days left`;

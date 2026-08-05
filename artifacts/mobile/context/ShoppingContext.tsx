@@ -143,7 +143,7 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
                 id: generateId(),
                 productId: product.id,
                 name: product.name,
-                quantity: product.minThreshold > 0 ? product.minThreshold : 1,
+                quantity: 1,
                 unit: product.unit,
                 checked: false,
                 isAuto: true,
@@ -194,7 +194,7 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
                 id: generateId(),
                 productId: product.id,
                 name: product.name,
-                quantity: product.minThreshold > 0 ? product.minThreshold : 1,
+                quantity: 1,
                 unit: product.unit,
                 checked: false,
                 isAuto: true,
@@ -306,6 +306,18 @@ export function ShoppingProvider({ children }: { children: React.ReactNode }) {
     productsRef.current = p;
     shoppingListRef.current = s;
   }, []);
+
+  // Keep Smart Suggestions reactive: re-sync whenever product stock/thresholds change
+  // (so suggestions refresh automatically) or when the set of product-linked non-auto
+  // items changes (so deleting a promoted item re-surfaces it as a suggestion).
+  // syncAutoItems only ever touches auto items, so this converges without looping.
+  const stockSig = products.map((p) => `${p.id}:${p.currentQuantity}:${p.minThreshold}`).join('|');
+  const linkedSig = shoppingList.filter((i) => !i.isAuto).map((i) => i.productId ?? '').join(',');
+  useEffect(() => {
+    if (!isLoaded) return;
+    syncAutoItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLoaded, stockSig, linkedSig]);
 
   return (
     <ShoppingContext.Provider

@@ -24,10 +24,10 @@ import { Package, Camera, Trash2, Activity, Pencil, X, Hash, TrendingDown, Trend
 import { formatDaysLeft, getAvgDailyConsumption, getDaysUntilEmpty, getNextBuyDate, getStockStatus } from '@/lib/predictions';
 
 const STATUS_LABELS: Record<string, string> = {
-  ok: 'In stock',
-  low: 'Running low',
+  ok: 'In Stock',
+  low: 'Running Low',
   critical: 'Critical',
-  out: 'Out of stock',
+  out: 'Out of Stock',
 };
 
 async function pickProductImage(source: 'camera' | 'library'): Promise<string | null> {

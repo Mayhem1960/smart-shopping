@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColors } from '@/hooks/useColors';
@@ -179,26 +179,38 @@ export default function HomeScreen() {
             </Pressable>
           </View>
           <View style={[styles.listPreview, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
-            {shoppingList.slice(0, 4).map((item) => (
-              <View key={item.id} style={[styles.listPreviewRow, { borderBottomColor: colors.border }]}>
-                <View style={[styles.listDot, { backgroundColor: item.checked ? colors.ok : colors.border }]} />
-                <Text
-                  style={[styles.listPreviewName, { color: item.checked ? colors.mutedForeground : colors.foreground, textDecorationLine: item.checked ? 'line-through' : 'none' }]}
-                  numberOfLines={1}
-                >
-                  {item.name}
-                </Text>
-                {item.isAuto && (
-                  <View style={[styles.autoBadge, { backgroundColor: colors.secondary }]}>
-                    <Text style={[styles.autoBadgeTxt, { color: colors.primary }]}>Auto</Text>
+            {shoppingList.slice(0, 5).map((item) => {
+              const linked = item.productId ? products.find((p) => p.id === item.productId) : undefined;
+              return (
+                <View key={item.id} style={[styles.listPreviewRow, { borderBottomColor: colors.border }]}>
+                  <View style={[styles.listThumb, { backgroundColor: colors.muted }]}>
+                    {linked?.imageUri ? (
+                      <Image source={{ uri: linked.imageUri }} style={styles.listThumbImg} resizeMode="cover" />
+                    ) : (
+                      <Package size={16} color={colors.mutedForeground} />
+                    )}
                   </View>
-                )}
-              </View>
-            ))}
-            {shoppingList.length > 4 && (
+                  <Text
+                    style={[styles.listPreviewName, { color: item.checked ? colors.mutedForeground : colors.foreground, textDecorationLine: item.checked ? 'line-through' : 'none' }]}
+                    numberOfLines={1}
+                  >
+                    {item.name}
+                  </Text>
+                  {item.isAuto && (
+                    <View style={[styles.autoBadge, { backgroundColor: colors.secondary }]}>
+                      <Text style={[styles.autoBadgeTxt, { color: colors.primary }]}>Auto</Text>
+                    </View>
+                  )}
+                  <Text style={[styles.listQty, { color: colors.mutedForeground }]}>
+                    {item.quantity} {item.unit}
+                  </Text>
+                </View>
+              );
+            })}
+            {shoppingList.length > 5 && (
               <Pressable onPress={() => router.push('/(tabs)/list')} style={styles.listPreviewMore}>
                 <Text style={[styles.seeMoreTxt, { color: colors.mutedForeground }]}>
-                  +{shoppingList.length - 4} more items
+                  +{shoppingList.length - 5} more items
                 </Text>
               </Pressable>
             )}
@@ -343,6 +355,16 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   listDot: { width: 8, height: 8, borderRadius: 4 },
+  listThumb: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  listThumbImg: { width: 32, height: 32, borderRadius: 8 },
+  listQty: { fontSize: 12, fontFamily: 'Inter_400Regular' },
   listPreviewName: { flex: 1, fontSize: 14, fontFamily: 'Inter_400Regular' },
   autoBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   autoBadgeTxt: { fontSize: 10, fontWeight: '600', fontFamily: 'Inter_600SemiBold' },

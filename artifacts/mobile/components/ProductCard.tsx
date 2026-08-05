@@ -12,10 +12,10 @@ interface Props {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  ok: 'In stock',
-  low: 'Running low',
+  ok: 'In Stock',
+  low: 'Running Low',
   critical: 'Critical',
-  out: 'Out of stock',
+  out: 'Out of Stock',
 };
 
 export default function ProductCard({ product, onPress }: Props) {
