@@ -62,9 +62,9 @@ export function stockFraction(product: Product): number {
 }
 
 export function needsRestock(product: Product): boolean {
+  // Only items at or below their threshold qualify — i.e. Running Low, Critical, or
+  // Out of Stock. Items still "In Stock" are never suggested, even if a consumption
+  // prediction says they may run out soon.
   const status = getStockStatus(product);
-  if (status === 'out' || status === 'critical' || status === 'low') return true;
-  const days = getDaysUntilEmpty(product);
-  if (days !== null && days < 5) return true;
-  return false;
+  return status === 'out' || status === 'critical' || status === 'low';
 }
