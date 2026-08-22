@@ -254,6 +254,49 @@ async function lookupOpenFoodFactsUS(barcode: string): Promise<FoodProduct | nul
 }
 
 // ---------------------------------------------------------------------------
+// Source 7 – EAN-DB  (large international EAN/UPC catalogue — requires API token)
+// Token is injected at build time via EXPO_PUBLIC_EANDB_TOKEN (never hardcoded).
+// ---------------------------------------------------------------------------
+const EANDB_TOKEN = process.env.EXPO_PUBLIC_EANDB_TOKEN;
+
+async function lookupEanDb(barcode: string): Promise<FoodProduct | null> {
+  if (!EANDB_TOKEN) return null;
+  try {
+    const codes = normaliseBarcodes(barcode);
+    for (const code of codes) {
+      const res = await fetch(
+        `https://ean-db.com/api/v2/product/${encodeURIComponent(code)}`,
+        {
+          headers: { Authorization: `Bearer ${EANDB_TOKEN}`, Accept: 'application/json' },
+          signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS),
+        },
+      );
+      if (!res.ok) continue;
+      const data = await res.json();
+      const p = data?.product;
+      if (!p) continue;
+      // Titles/manufacturer are multilingual maps; prefer English, else any language.
+      const titles = p.titles ?? {};
+      const name = titles.en || titles.fr || titles.de || Object.values(titles)[0] || '';
+      if (!name) continue;
+      const mfTitles = p.manufacturer?.titles ?? {};
+      const brand = mfTitles.en || Object.values(mfTitles)[0] || '';
+      const category = p.categories?.[0]?.titles?.en || '';
+      const rawImg = p.images?.[0]?.url || '';
+      return {
+        name: titleCase(String(name)),
+        brand: brand ? titleCase(String(brand)) : undefined,
+        category: category ? String(category) : undefined,
+        imageUrl: rawImg ? httpsUrl(String(rawImg)) : undefined,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main export
 // Runs ALL sources in parallel, then returns the result with the highest
 // completeness score (most fields filled) rather than just the first hit.
@@ -266,6 +309,7 @@ export async function lookupBarcode(barcode: string): Promise<FoodProduct | null
     lookupOpenBeautyFacts(barcode),
     lookupOpenProductsFacts(barcode),
     lookupDatakick(barcode),
+    lookupEanDb(barcode),
   ]);
 
   const usable = results
