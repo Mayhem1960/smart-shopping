@@ -16,8 +16,9 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useColors } from '@/hooks/useColors';
+import { useShopping } from '@/context/ShoppingContext';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Camera, Pencil } from 'lucide-react-native';
+import { Camera, Pencil, ChevronDown } from 'lucide-react-native';
 
 export interface ProductFormData {
   barcode: string;
@@ -75,6 +76,7 @@ async function pickImage(source: 'camera' | 'library'): Promise<string | null> {
 export default function AddProductModal({ visible, initialData, onConfirm, onCancel }: Props) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
+  const { products } = useShopping();
 
   const [name, setName] = useState(initialData.name ?? '');
   const [brand, setBrand] = useState(initialData.brand ?? '');
@@ -83,6 +85,19 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
   const [unit, setUnit] = useState(initialData.unit ?? 'unit');
   const [currentQty, setCurrentQty] = useState(String(initialData.currentQuantity ?? 1));
   const [minThreshold, setMinThreshold] = useState(String(initialData.minThreshold ?? 1));
+  const [catOpen, setCatOpen] = useState(false);
+
+  // Existing categories already used across the pantry, for the quick-fill dropdown.
+  const existingCategories = React.useMemo(
+    () =>
+      Array.from(
+        new Set(products.map((p) => p.category?.trim()).filter((c): c is string => !!c)),
+      ).sort((a, b) => a.localeCompare(b)),
+    [products],
+  );
+  const filteredCategories = category.trim()
+    ? existingCategories.filter((c) => c.toLowerCase().includes(category.trim().toLowerCase()))
+    : existingCategories;
 
   // Reset when modal opens
   React.useEffect(() => {
@@ -94,6 +109,7 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
       setUnit(initialData.unit ?? 'unit');
       setCurrentQty(String(initialData.currentQuantity ?? 1));
       setMinThreshold(String(initialData.minThreshold ?? 1));
+      setCatOpen(false);
     }
   }, [visible]);
 
@@ -233,14 +249,38 @@ export default function AddProductModal({ visible, initialData, onConfirm, onCan
           />
 
           <Text style={labelStyle}>Category</Text>
-          <TextInput
-            style={inputStyle}
-            value={category}
-            onChangeText={setCategory}
-            placeholder="e.g. dairy"
-            placeholderTextColor={colors.mutedForeground}
-            returnKeyType="next"
-          />
+          <View style={styles.catRow}>
+            <TextInput
+              style={[inputStyle, { flex: 1 }]}
+              value={category}
+              onChangeText={(t) => { setCategory(t); if (!catOpen) setCatOpen(true); }}
+              autoCapitalize="words"
+              placeholder="e.g. Dairy"
+              placeholderTextColor={colors.mutedForeground}
+              returnKeyType="next"
+            />
+            {existingCategories.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setCatOpen((o) => !o)}
+                style={[styles.catToggle, { backgroundColor: colors.muted, borderColor: colors.border, borderRadius: colors.radius - 4 }]}
+              >
+                <ChevronDown size={18} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            )}
+          </View>
+          {catOpen && filteredCategories.length > 0 && (
+            <View style={[styles.catDropdown, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius - 4 }]}>
+              {filteredCategories.map((c) => (
+                <TouchableOpacity
+                  key={c}
+                  onPress={() => { setCategory(c); setCatOpen(false); }}
+                  style={[styles.catOption, { borderBottomColor: colors.border }]}
+                >
+                  <Text style={{ color: colors.foreground, fontSize: 15, fontFamily: 'Inter_400Regular' }}>{c}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
           <Text style={labelStyle}>Unit</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.unitRow}>
@@ -372,6 +412,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     fontSize: 15,
     fontFamily: 'Inter_400Regular',
+  },
+  catRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  catToggle: {
+    width: 46,
+    height: 46,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catDropdown: {
+    borderWidth: 1,
+    marginTop: 6,
+    overflow: 'hidden',
+    maxHeight: 200,
+  },
+  catOption: {
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   unitRow: {
     flexDirection: 'row',

@@ -39,6 +39,9 @@ export default function HomeScreen() {
   });
   const checkedCount = shoppingList.filter((i) => i.checked).length;
   const totalListCount = shoppingList.length;
+  // Home "My List" shows only the user's own list items (not auto Smart Suggestions,
+  // which are already surfaced under "Needs Restocking").
+  const myListItems = shoppingList.filter((i) => !i.isAuto);
 
   const now = new Date();
   const hours = now.getHours();
@@ -168,8 +171,8 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Shopping list preview */}
-      {shoppingList.length > 0 && (
+      {/* My List preview */}
+      {myListItems.length > 0 && (
         <View style={styles.section}>
           <View style={styles.sectionHeaderRow}>
             <View style={[styles.sectionDot, { backgroundColor: colors.primary }]} />
@@ -179,7 +182,7 @@ export default function HomeScreen() {
             </Pressable>
           </View>
           <View style={[styles.listPreview, { backgroundColor: colors.card, borderColor: colors.border, borderRadius: colors.radius }]}>
-            {shoppingList.slice(0, 5).map((item) => {
+            {myListItems.slice(0, 5).map((item) => {
               const linked = item.productId ? products.find((p) => p.id === item.productId) : undefined;
               return (
                 <View key={item.id} style={[styles.listPreviewRow, { borderBottomColor: colors.border }]}>
@@ -207,10 +210,10 @@ export default function HomeScreen() {
                 </View>
               );
             })}
-            {shoppingList.length > 5 && (
+            {myListItems.length > 5 && (
               <Pressable onPress={() => router.push('/(tabs)/list')} style={styles.listPreviewMore}>
                 <Text style={[styles.seeMoreTxt, { color: colors.mutedForeground }]}>
-                  +{shoppingList.length - 5} more items
+                  +{myListItems.length - 5} more items
                 </Text>
               </Pressable>
             )}

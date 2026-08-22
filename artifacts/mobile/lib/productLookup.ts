@@ -6,6 +6,9 @@ export interface FoodProduct {
   quantity?: string;
 }
 
+// Bound every source so one slow/hanging database can't stall the whole lookup.
+const LOOKUP_TIMEOUT_MS = 6000;
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -73,7 +76,7 @@ async function lookupOpenFoodFacts(barcode: string): Promise<FoodProduct | null>
     for (const code of codes) {
       const res = await fetch(
         `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}?fields=product_name,product_name_en,brands,categories_tags,image_front_url,image_front_small_url,image_url,selected_images,quantity`,
-        { headers: { 'User-Agent': 'SmartShoppingApp/1.0' } },
+        { headers: { 'User-Agent': 'SmartShoppingApp/1.0' }, signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) },
       );
       if (!res.ok) continue;
       const data = await res.json();
@@ -107,7 +110,7 @@ async function lookupUpcItemDb(barcode: string): Promise<FoodProduct | null> {
     for (const code of codes) {
       const res = await fetch(
         `https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(code)}`,
-        { headers: { 'User-Agent': 'SmartShoppingApp/1.0', Accept: 'application/json' } },
+        { headers: { 'User-Agent': 'SmartShoppingApp/1.0', Accept: 'application/json' }, signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) },
       );
       if (!res.ok) continue;
       const data = await res.json();
@@ -138,7 +141,7 @@ async function lookupOpenBeautyFacts(barcode: string): Promise<FoodProduct | nul
     for (const code of codes) {
       const res = await fetch(
         `https://world.openbeautyfacts.org/api/v0/product/${encodeURIComponent(code)}.json`,
-        { headers: { 'User-Agent': 'SmartShoppingApp/1.0' } },
+        { headers: { 'User-Agent': 'SmartShoppingApp/1.0' }, signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) },
       );
       if (!res.ok) continue;
       const data = await res.json();
@@ -169,7 +172,7 @@ async function lookupOpenProductsFacts(barcode: string): Promise<FoodProduct | n
     for (const code of codes) {
       const res = await fetch(
         `https://world.openproductsfacts.org/api/v0/product/${encodeURIComponent(code)}.json`,
-        { headers: { 'User-Agent': 'SmartShoppingApp/1.0' } },
+        { headers: { 'User-Agent': 'SmartShoppingApp/1.0' }, signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) },
       );
       if (!res.ok) continue;
       const data = await res.json();
@@ -199,7 +202,7 @@ async function lookupDatakick(barcode: string): Promise<FoodProduct | null> {
     for (const code of codes) {
       const res = await fetch(
         `https://www.datakick.org/api/items/${encodeURIComponent(code)}`,
-        { headers: { 'User-Agent': 'SmartShoppingApp/1.0', Accept: 'application/json' } },
+        { headers: { 'User-Agent': 'SmartShoppingApp/1.0', Accept: 'application/json' }, signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) },
       );
       if (!res.ok) continue;
       const data = await res.json();
@@ -227,7 +230,7 @@ async function lookupOpenFoodFactsUS(barcode: string): Promise<FoodProduct | nul
     for (const code of codes) {
       const res = await fetch(
         `https://us.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`,
-        { headers: { 'User-Agent': 'SmartShoppingApp/1.0' } },
+        { headers: { 'User-Agent': 'SmartShoppingApp/1.0' }, signal: AbortSignal.timeout(LOOKUP_TIMEOUT_MS) },
       );
       if (!res.ok) continue;
       const data = await res.json();

@@ -46,6 +46,24 @@ export default function ScanScreen() {
   const lastScannedRef = useRef<string | null>(null);
   const cooldownRef = useRef(false);
 
+  // Require the same barcode to be read steadily for 2s before looking it up, so a
+  // partial/mis-read (which flips the value) doesn't trigger an empty lookup.
+  const STEADY_MS = 2000;
+  const candidateRef = useRef<string | null>(null);
+  const steadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [holding, setHolding] = useState(false);
+
+  const clearSteady = useCallback(() => {
+    if (steadyTimerRef.current) {
+      clearTimeout(steadyTimerRef.current);
+      steadyTimerRef.current = null;
+    }
+    candidateRef.current = null;
+    setHolding(false);
+  }, []);
+
+  useEffect(() => () => clearSteady(), [clearSteady]);
+
   const handleBarcode = useCallback(
     async (barcode: string) => {
       if (cooldownRef.current || barcode === lastScannedRef.current) return;
@@ -83,16 +101,40 @@ export default function ScanScreen() {
     [getProductByBarcode],
   );
 
+  // Called on every camera read; only fires the lookup once a value holds for STEADY_MS.
+  const onScan = useCallback(
+    (data: string) => {
+      if (!data) return;
+      if (cooldownRef.current || data === lastScannedRef.current) return;
+      // Same value already counting down — let the timer continue.
+      if (data === candidateRef.current) return;
+      // New/changed value: (re)start the stability window.
+      candidateRef.current = data;
+      setHolding(true);
+      if (steadyTimerRef.current) clearTimeout(steadyTimerRef.current);
+      steadyTimerRef.current = setTimeout(() => {
+        steadyTimerRef.current = null;
+        setHolding(false);
+        if (candidateRef.current === data && !cooldownRef.current) {
+          handleBarcode(data);
+        }
+      }, STEADY_MS);
+    },
+    [handleBarcode],
+  );
+
   const handleAddConfirm = (data: ProductFormData) => {
     addProduct(data);
     setAddModalVisible(false);
     lastScannedRef.current = null;
+    clearSteady();
     setScanning(true);
   };
 
   const handleAddCancel = () => {
     setAddModalVisible(false);
     lastScannedRef.current = null;
+    clearSteady();
     setScanning(true);
   };
 
@@ -100,6 +142,7 @@ export default function ScanScreen() {
     setConsumeModalVisible(false);
     setActiveProduct(null);
     lastScannedRef.current = null;
+    clearSteady();
     setScanning(true);
   };
 
@@ -195,7 +238,7 @@ export default function ScanScreen() {
         facing="back"
         onBarcodeScanned={
           scanning
-            ? ({ data }) => handleBarcode(data)
+            ? ({ data }) => onScan(data)
             : undefined
         }
         barcodeScannerSettings={{
@@ -219,6 +262,12 @@ export default function ScanScreen() {
             <View style={[styles.corner, styles.bottomLeft, { borderColor: '#fff' }]} />
             <View style={[styles.corner, styles.bottomRight, { borderColor: '#fff' }]} />
           </View>
+          {holding && !looking && (
+            <View style={styles.lookingBox}>
+              <ActivityIndicator color="#fff" />
+              <Text style={styles.lookingTxt}>Hold steady...</Text>
+            </View>
+          )}
           {looking && (
             <View style={styles.lookingBox}>
               <ActivityIndicator color="#fff" />
