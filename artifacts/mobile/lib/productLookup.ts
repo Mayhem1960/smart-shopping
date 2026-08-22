@@ -302,23 +302,28 @@ async function lookupEanDb(barcode: string): Promise<FoodProduct | null> {
 // completeness score (most fields filled) rather than just the first hit.
 // ---------------------------------------------------------------------------
 export async function lookupBarcode(barcode: string): Promise<FoodProduct | null> {
-  const results = await Promise.allSettled([
+  // Step 1: the free, unlimited sources run in parallel.
+  const freeResults = await Promise.allSettled([
     lookupOpenFoodFacts(barcode),
     lookupUpcItemDb(barcode),
     lookupOpenFoodFactsUS(barcode),
     lookupOpenBeautyFacts(barcode),
     lookupOpenProductsFacts(barcode),
     lookupDatakick(barcode),
-    lookupEanDb(barcode),
   ]);
 
-  const usable = results
+  const freeUsable = freeResults
     .filter((r): r is PromiseFulfilledResult<FoodProduct | null> => r.status === 'fulfilled')
     .map((r) => r.value)
     .filter(isUsable);
 
-  if (usable.length === 0) return null;
+  // If any free source matched, use the most complete one — EAN-DB is never called.
+  if (freeUsable.length > 0) {
+    return freeUsable.reduce((best, current) => (score(current) > score(best) ? current : best));
+  }
 
-  // Return the most complete result
-  return usable.reduce((best, current) => (score(current) > score(best) ? current : best));
+  // Step 2: fall back to EAN-DB (metered API) ONLY when no free source found a match,
+  // so its limited quota is spent solely on products the free databases can't resolve.
+  const eanResult = await lookupEanDb(barcode);
+  return isUsable(eanResult) ? eanResult : null;
 }
