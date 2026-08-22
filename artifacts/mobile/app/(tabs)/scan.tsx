@@ -20,6 +20,11 @@ import { Product } from '@/lib/storage';
 import { CameraOff } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
+// A barcode must be read continuously for STEADY_MS before we look it up. If reads
+// pause for longer than GAP_MS the value wasn't held steadily, so the window restarts.
+const STEADY_MS = 2000;
+const GAP_MS = 700;
+
 export default function ScanScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
@@ -46,19 +51,20 @@ export default function ScanScreen() {
   const lastScannedRef = useRef<string | null>(null);
   const cooldownRef = useRef(false);
 
-  // Require the same barcode to be read steadily for 2s before looking it up, so a
-  // partial/mis-read (which flips the value) doesn't trigger an empty lookup.
-  const STEADY_MS = 2000;
   const candidateRef = useRef<string | null>(null);
-  const steadyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const firstSeenRef = useRef(0);
+  const lastSeenRef = useRef(0);
+  const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [holding, setHolding] = useState(false);
 
   const clearSteady = useCallback(() => {
-    if (steadyTimerRef.current) {
-      clearTimeout(steadyTimerRef.current);
-      steadyTimerRef.current = null;
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
     }
     candidateRef.current = null;
+    firstSeenRef.current = 0;
+    lastSeenRef.current = 0;
     setHolding(false);
   }, []);
 
@@ -101,26 +107,39 @@ export default function ScanScreen() {
     [getProductByBarcode],
   );
 
-  // Called on every camera read; only fires the lookup once a value holds for STEADY_MS.
+  // Called on every camera frame that decodes a barcode. The scanner fires this
+  // repeatedly while a barcode is in view, so we only look it up once the SAME value
+  // has been read continuously for STEADY_MS — a brief/partial glimpse never fires.
   const onScan = useCallback(
     (data: string) => {
       if (!data) return;
       if (cooldownRef.current || data === lastScannedRef.current) return;
-      // Same value already counting down — let the timer continue.
-      if (data === candidateRef.current) return;
-      // New/changed value: (re)start the stability window.
-      candidateRef.current = data;
-      setHolding(true);
-      if (steadyTimerRef.current) clearTimeout(steadyTimerRef.current);
-      steadyTimerRef.current = setTimeout(() => {
-        steadyTimerRef.current = null;
+      const now = Date.now();
+
+      // New value, or the previous read-stream lapsed (>GAP_MS) → restart the window.
+      if (data !== candidateRef.current || now - lastSeenRef.current > GAP_MS) {
+        candidateRef.current = data;
+        firstSeenRef.current = now;
+        setHolding(true);
+      }
+      lastSeenRef.current = now;
+
+      // Watchdog: if reads stop (barcode removed) before it holds long enough, reset —
+      // so a momentary read can't sit as a candidate and fire later.
+      if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = setTimeout(() => {
+        candidateRef.current = null;
+        firstSeenRef.current = 0;
         setHolding(false);
-        if (candidateRef.current === data && !cooldownRef.current) {
-          handleBarcode(data);
-        }
-      }, STEADY_MS);
+      }, GAP_MS);
+
+      // Held steady long enough → look it up.
+      if (now - firstSeenRef.current >= STEADY_MS) {
+        clearSteady();
+        handleBarcode(data);
+      }
     },
-    [handleBarcode],
+    [handleBarcode, clearSteady],
   );
 
   const handleAddConfirm = (data: ProductFormData) => {
