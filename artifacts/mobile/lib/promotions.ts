@@ -3,6 +3,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SETTINGS_KEY = '@smartshopping/promotions';
 
+// AbortSignal.timeout() is often undefined in React Native's Hermes runtime; use an
+// AbortController so the request actually runs and still times out.
+function timeoutSignal(ms: number): AbortSignal {
+  const controller = new AbortController();
+  setTimeout(() => controller.abort(), ms);
+  return controller.signal;
+}
+
 export interface Deal {
   id: string;
   store: string;
@@ -98,7 +106,7 @@ export async function fetchLocalDeals(
         const url = `https://backflipp.wishabi.com/flipp/items/search?locale=${locale}&postal_code=${encodeURIComponent(postal)}&q=${encodeURIComponent(name)}`;
         const resp = await fetch(url, {
           headers: { Accept: 'application/json' },
-          signal: AbortSignal.timeout(6000),
+          signal: timeoutSignal(6000),
         });
         if (!resp.ok) return;
         const data = await resp.json();
